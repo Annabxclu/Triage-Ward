@@ -222,6 +222,13 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .cert .bar{flex:1;height:6px;margin:0}
 .cert .bar i{background:var(--accent)}
 .results{display:grid;gap:6px}
+.ddx{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ddx li{display:grid;grid-template-columns:minmax(0,1fr) 80px 40px;gap:8px;align-items:center;font-size:13px}
+.ddx .dn{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.ddx .dn small{color:var(--muted);font-size:11px}
+.ddx .bar{height:6px;margin:0}
+.ddx .bar i{background:var(--accent)}
+.ddx .pc{text-align:right;font-size:12px}
 .res{border-left:2px solid var(--line);padding-left:10px;font-size:13px}
 .res b{display:block;font-size:12px;color:var(--muted);font-weight:700}
 .res.pos{border-color:var(--accent)}
@@ -544,6 +551,24 @@ const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart at
  "Subarachnoid hemorrhage":5,"New-onset epilepsy":1,"Pulmonary embolism":2,"Stevens-Johnson syndrome":4};
 for(const k in LOS)if(!CONDS.some(c=>c.n===k))console.warn('LOS name not found',k);
 CONDS.forEach(c=>c.los=LOS[c.n]||0);
+/* ---------- likelihood of each diagnosis from what has been uncovered ---------- */
+const LK_W=0.45,LK_HIT=0.6,LK_MISS=1.0,LK_NORM=1.3,LK_BASIC=0.2;
+
+const STOPW=new Set('the and for with from that this than not but after before over under one two side very more less into its his her their they them she him you your all any some since last week weeks day days hours hour minutes minute ago year years time times every each like feels feel been just keeps started began only both other doesn can went got gets new old normal positive negative elevated high low'.split(' '));
+function toks(str){return [...new Set(str.toLowerCase().replace(/[^a-z\s-]/g,' ').split(/[\s-]+/).filter(w=>w.length>2&&!STOPW.has(w)).map(w=>w.replace(/(ing|ed|es|s)$/,'')).filter(w=>w.length>2))]}
+const DF={};CONDS.forEach(c=>{const seen=new Set();c.F.forEach(g=>toks(g.l).forEach(w=>seen.add(w)));seen.forEach(w=>DF[w]=(DF[w]||0)+1)});
+const IDF=w=>DF[w]>=2?Math.log(1+CONDS.length/DF[w]):0;
+CONDS.forEach(c=>c.F.forEach(g=>{g.k=toks(g.l).filter(w=>DF[w]>=2)}));
+function wsim(a,b){let i=0,ta=0,tb=0;const B=new Set(b);a.forEach(w=>{const v=IDF(w);ta+=v;if(B.has(w))i+=v});b.forEach(w=>tb+=IDF(w));return ta&&tb?2*i/(ta+tb):0}
+function likely(p){const c0=cond(p);const obs=p.rev.map(i=>c0.F[i]);const done=Object.keys(p.res);
+  const sc=CONDS.map(C=>{if(C.sx&&C.sx!==p.sex)return -Infinity;let s=0;
+    const cw=C.kw||(C.kw=new Set(C.F.flatMap(g=>g.k)));const seen=new Set();
+    obs.forEach(f=>f.k.forEach(w=>{if(seen.has(w))return;seen.add(w);s+=(cw.has(w)?LK_W:-LK_W*.35)*IDF(w)/3}));
+    done.forEach(x=>{const has=C.F.some(g=>g.x===x),abn=p.res[x]!=null,k=EXAMS[x].depts==='basic'?LK_BASIC:1;if(abn&&has)s+=LK_HIT*k;else if(abn&&!has)s-=LK_MISS*k;else if(!abn&&has)s-=LK_NORM*k});
+    if(p.age<C.a[0]-5||p.age>C.a[1]+5)s-=1.5;return s});
+  const fin=sc.filter(v=>v>-Infinity);const m=Math.max(...fin);const ex=sc.map(v=>v>-Infinity?Math.exp(v-m):0);const tot=ex.reduce((a,b)=>a+b,0);
+  return ex.map(v=>v/tot)}
+
 const DAY = 30, /* recovery minutes per real-life day of stay */ BED_COST = 3000, BEDMAX = 10, START_BEDS = 2;
 const roomRate = d=>d==='icu'?4000:1500;
 const FIRST_F = ["Maya","Grace","Lucia","Amara","Hannah","Nora","Priya","Elena","Tasha","Ruth","Mei","Sofia","Zoe","Imani","Leah","Rosa","Ivy","Dana","June","Keisha","Ana","Hazel","Noor","Esther"];
@@ -795,7 +820,7 @@ function renderSide(){
    <li>Click a patient at Reception and read the complaint. The name color is triage: red, yellow, green.</li>
    <li>Send them to an open department. In the ER: assign a triage room and a nurse for the first tests, then the waiting room or a diagnostic room with a doctor.</li>
    <li>Run tests to uncover findings. Imaging lives in Radiology, blood work in the Lab: send them there, then back.</li>
-   <li>Pick the diagnosis. A wrong guess sends the patient home without paying.</li>
+   <li>Pick the diagnosis. The chart's Likely diagnoses list shows the odds from what you've uncovered so far. A wrong guess sends the patient home without paying.</li>
    <li>Treat in a department that handles that condition, or transfer them out. Bigger cases then need a recovery bed; discharge them when their stay ends.</li>
    <li>With a Pharmacy open, treated patients come to you for meds. Pick what a real doctor would prescribe.</li>
    <li>Every confirmed diagnosis, misdiagnosis or autopsy adds the full case to your Casebook.</li>
@@ -977,6 +1002,9 @@ function chartHTML(p){
    <ul class="findings">${p.rev.map(i=>c.F[i]).map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}
    ${tot-got?`<li class="hid">${tot-got} more finding${tot-got>1?'s':''} hidden. Run the right tests.</li>`:''}</ul></div>`;
 
+  let LK=null;
+  if(p.dx!==p.c){LK=likely(p);const top=LK.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).filter(x=>x[0]>=.01).slice(0,5);
+    h+=`<div class="sec"><h3>Likely diagnoses <span>from findings so far</span></h3><ul class="ddx">${top.map(([v,i])=>`<li><span class="dn">${esc(CONDS[i].n)}<small>${esc(DEPT[CONDS[i].d].name)}</small></span><span class="bar"><i style="width:${Math.max(2,Math.round(v*100))}%"></i></span><span class="mono pc">${Math.round(v*100)}%</span></li>`).join('')}</ul></div>`}
   const done=Object.keys(p.res);
   if(done.length)h+=`<div class="sec"><h3>Test results</h3><div class="results">${done.map(x=>`<div class="res ${p.res[x]?'pos':''}"><b>${esc(EXAMS[x].name)}</b>${p.res[x]?esc(p.res[x].join('; ')):esc(EXAMS[x].norm)}</div>`).join('')}</div></div>`;
 
@@ -1008,7 +1036,9 @@ function chartHTML(p){
   h+=`<label for="sendTo">Send to department</label><div class="line"><select id="sendTo"><option value="">Choose…</option>${opts}</select><button class="btn" data-act="send" ${p.busy?'disabled':''}>Send</button></div>`;
   if(dk==='clinic'&&p.dx!==p.c&&(L!=='er'||(p.stage==='dx'&&p.doc))){
     const groups={};CONDS.forEach((cc,i)=>{(groups[cc.d]=groups[cc.d]||[]).push([cc.n,i])});
-    h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy?'disabled':''}>Confirm</button></div>`;
+    const pct=i=>{const v=LK?LK[i]:0;return v>=.01?` — ${Math.round(v*100)}%`:''};
+    const topI=LK?LK.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).filter(x=>x[0]>=.01).slice(0,5).map(x=>x[1]):[];
+    h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${topI.length?`<optgroup label="Most likely">${topI.map(i=>`<option value="${i}">${esc(CONDS[i].n)}${pct(i)}</option>`).join('')}</optgroup>`:''}${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}${pct(i)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy?'disabled':''}>Confirm</button></div>`;
   } else if(L==='er'&&p.dx!==p.c)h+=`<span class="empty-note">A doctor makes the diagnosis in a diagnostic room.</span>`;
   else if(L==='rec')h+=`<span class="empty-note">Tests and diagnosis happen once they're in a department.</span>`;
   else if(dk==='diag')h+=`<span class="empty-note">Diagnostic departments run tests only. Send them back to a ward to diagnose.</span>`;
