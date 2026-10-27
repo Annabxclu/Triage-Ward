@@ -554,6 +554,10 @@ const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart at
  "Subarachnoid hemorrhage":5,"New-onset epilepsy":1,"Pulmonary embolism":2,"Stevens-Johnson syndrome":4};
 for(const k in LOS)if(!CONDS.some(c=>c.n===k))console.warn('LOS name not found',k);
 CONDS.forEach(c=>c.los=LOS[c.n]||0);
+/* speed: tests, exams and treatments run at half their listed real-world length */
+const TIME_SCALE=0.5;
+Object.values(EXAMS).forEach(e=>{e.min=Math.max(1,Math.round(e.min*TIME_SCALE))});
+CONDS.forEach(c=>{c.tx[1]=Math.max(1,Math.round(c.tx[1]*TIME_SCALE))});
 /* ---------- likelihood of each diagnosis from what has been uncovered ---------- */
 const LK_W=0.45,LK_HIT=0.6,LK_MISS=1.0,LK_NORM=1.3,LK_BASIC=0.2;
 
@@ -715,7 +719,7 @@ function startStab(p){
 }
 function startAutopsy(p){
   if(p.busy||p.autopsy||!canWork('path'))return;
-  p.busy={k:'autopsy',d:'path',start:S.t,end:S.t+dur(30,'path')};p.v++;dirty=true;
+  p.busy={k:'autopsy',d:'path',start:S.t,end:S.t+dur(15,'path')};p.v++;dirty=true;
 }
 function diagnose(p,ci){
   if(p.loc==='er'&&!(p.stage==='dx'&&p.doc))return;
@@ -994,7 +998,7 @@ function chartHTML(p){
     else if(p.autopsy)h+=`<div class="sec"><div class="callout"><b>Cause of death:</b> ${esc(c.n)}. Treated in ${esc(c.t.map(t=>DEPT[t].name).join(' or '))}.</div>
       <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
       <button class="btn" data-act="release">Release body</button></div>`;
-    else h+=`<div class="sec"><button class="btn primary" data-act="autopsy" ${canWork('path')?'':'disabled'}>Perform autopsy · 30 minutes</button>
+    else h+=`<div class="sec"><button class="btn primary" data-act="autopsy" ${canWork('path')?'':'disabled'}>Perform autopsy · 15 minutes</button>
       ${S.depts.path.lead?'':'<span class="empty-note">Hire a pathologist first.</span>'}</div>`;
     return h;
   }
