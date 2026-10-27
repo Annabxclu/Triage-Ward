@@ -291,7 +291,6 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
     <div class="meters">
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
-      <div class="meter"><small>Reputation</small><b id="rep">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <div class="speed" id="speed" role="group" aria-label="Game speed">
         <button data-act="speed" data-s="0" title="Pause">II</button>
@@ -549,7 +548,7 @@ function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s
 
 function log(msg,kind=''){S.log.unshift({t:S.t,msg,kind});if(S.log.length>40)S.log.length=40}
 function toast(msg,kind=''){const el=document.createElement('div');el.className='toast '+kind;el.textContent=msg;const box=document.getElementById('toasts');box.appendChild(el);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>el.remove(),4200)}
-function rep(n){S.rep=Math.max(0,Math.min(100,S.rep+n))}
+function rep(n){}
 const pname=p=>`${p.first} ${p.last}`;
 const cond=p=>CONDS[p.c];
 
@@ -705,7 +704,7 @@ function renderSide(){
    <li>Click a patient at Reception and read the complaint. The name color is triage: red, yellow, green.</li>
    <li>Send them to an open department. The ER can run basic exams, ECG and quick swabs.</li>
    <li>Run tests to uncover findings. Imaging lives in Radiology, blood work in the Lab: send them there, then back.</li>
-   <li>Pick the diagnosis. Wrong guesses cost reputation and the patient leaves.</li>
+   <li>Pick the diagnosis. A wrong guess sends the patient home without paying.</li>
    <li>Treat in a department that handles that condition, or transfer them out.</li>
    <li>With a Pharmacy open, treated patients come to you for meds. Pick what a real doctor would prescribe.</li>
    <li>Every confirmed diagnosis, misdiagnosis or autopsy adds the full case to your Casebook.</li>
@@ -900,7 +899,6 @@ function renderTop(){
 function tickUI(){
   document.getElementById('clock').textContent=clockStr(S.t);
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
-  document.getElementById('rep').textContent=`${Math.round(S.rep)} / 100`;
   document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':`${Math.max(0,Math.ceil(S.next-S.t))} min`;
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}

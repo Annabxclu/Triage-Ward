@@ -8,7 +8,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 1. A patient reaches Reception every 5 game minutes (10 can wait). Name color is triage: red (30 min to live), yellow, green.
 2. Read the complaint and send them to an open department.
 3. Run real tests to uncover hidden findings. Imaging is in Radiology, blood work in the Lab; send patients there and back.
-4. Pick the diagnosis from 73 real conditions. Wrong guesses cost reputation.
+4. Pick the diagnosis from 73 real conditions. A wrong guess sends the patient home without paying.
 5. Treat in a department that handles the condition, or transfer to another hospital.
 6. With a Pharmacy open, choose the right OTC and prescription meds.
 
