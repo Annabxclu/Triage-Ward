@@ -647,10 +647,11 @@ function erMove(p,to){const D=S.depts.er;if(p.loc!=='er'||p.busy)return;
   if(to==='tri'&&D.tri.length>=D.triRooms){toast('No triage room is free.');return}
   if(to==='dx'&&D.dxr.length>=D.dxRooms){toast('No diagnostic room is free.');return}
   if(to==='wait'&&D.w.length>=WMAX){toast('The ER waiting room is full.');return}
+  if(to==='queue'&&D.q.length>=QMAX){toast('The ER queue is full.');return}
   ['q','w','tri','dxr'].forEach(k=>D[k]=D[k].filter(x=>x!==p.id));
-  if(p.stage==='tri')p.triaged=true;
+  if(p.stage==='tri'&&to!=='queue')p.triaged=true;
   p.nurse=null;if(to!=='dx')p.doc=null;p.tq=[];
-  ({tri:D.tri,wait:D.w,dx:D.dxr})[to].push(p.id);p.stage=to;p.v++;dirty=true}
+  ({queue:D.q,tri:D.tri,wait:D.w,dx:D.dxr})[to].push(p.id);p.stage=to;p.v++;dirty=true}
 function assignStaff(p,sid){const x=staffById(sid);if(!x||staffBusyWith(sid)||p.loc!=='er')return;
   if(x.role==='nurse'&&p.stage==='tri')p.nurse=sid;else if(x.role==='doctor'&&p.stage==='dx')p.doc=sid;else return;
   p.v++;dirty=true;tryNext(p)}
@@ -884,10 +885,10 @@ function erFlowHTML(p){const D=S.depts.er;let h='';const b=p.busy?'disabled':'';
   const pickBtns=(role)=>{const fr=freeStaff(role);return fr.length?fr.map(x=>`<button class="btn sm" data-act="assign" data-s="${x.id}" ${b}>Assign ${esc(staffName(x))}</button>`).join(''):`<span class="empty-note">All ${role}s are busy${role==='doctor'?'. The patient keeps the room until one is free.':'.'}</span>`};
   if(p.stage==='queue')h=`<p class="flowtxt">Waiting for triage.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="tri" ${D.tri.length>=D.triRooms?'disabled':''}>Assign triage room</button><span class="empty-note">${D.tri.length}/${D.triRooms} rooms in use</span></div>`;
   else if(p.stage==='tri')h=`${p.nurse?`<p class="flowtxt">With <b>${esc(staffName(staffById(p.nurse)))}</b>. Run nurse tests below, then move them on.</p>`:`<p class="flowtxt">In a triage room. Assign a nurse:</p><div class="line wrap">${pickBtns('nurse')}</div>`}
-     <div class="line wrap"><button class="btn" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>To waiting room (${D.w.length}/${WMAX})</button><button class="btn primary" data-act="ermove" data-to="dx" ${b||D.dxr.length>=D.dxRooms?'disabled':''}>To diagnostic room (${D.dxr.length}/${D.dxRooms})</button></div>`;
-  else if(p.stage==='wait')h=`<p class="flowtxt">Triaged. Waiting for a doctor.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="dx" ${D.dxr.length>=D.dxRooms?'disabled':''}>Move to diagnostic room</button><span class="empty-note">${D.dxr.length}/${D.dxRooms} rooms in use</span></div>`;
+     <div class="line wrap"><button class="btn" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>To waiting room (${D.w.length}/${WMAX})</button><button class="btn primary" data-act="ermove" data-to="dx" ${b||D.dxr.length>=D.dxRooms?'disabled':''}>To diagnostic room (${D.dxr.length}/${D.dxRooms})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
+  else if(p.stage==='wait')h=`<p class="flowtxt">Triaged. Waiting for a doctor.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="dx" ${D.dxr.length>=D.dxRooms?'disabled':''}>Move to diagnostic room (${D.dxr.length}/${D.dxRooms})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
   else if(p.stage==='dx')h=`${p.doc?`<p class="flowtxt">With <b>${esc(staffName(staffById(p.doc)))}</b>.</p>`:`<p class="flowtxt">In a diagnostic room. Assign a doctor:</p><div class="line wrap">${pickBtns('doctor')}</div>`}
-     <div class="line wrap"><button class="btn sm" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>Back to waiting room</button></div>`;
+     <div class="line wrap"><button class="btn sm" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>Back to waiting room (${D.w.length}/${WMAX})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
   return h?`<div class="sec"><h3>Emergency room <span>${esc(STAGE[p.stage]||'')}</span></h3><div class="act">${h}</div></div>`:''}
 function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${l.at?realTime(l.at):hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
 
