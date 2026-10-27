@@ -160,7 +160,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .bar i{display:block;height:100%;background:var(--muted);width:100%}
 .bar.r i{background:var(--red)} .bar.y i{background:var(--amber)} .bar.g i{background:var(--green)}
 .bar.busy i{background:var(--accent)}
-.timeline{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.timeline{display:block;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
 .timeline .urgent{color:var(--red);font-weight:600}
 .empty-note{color:var(--muted);font-size:13px}
 .logbox{border-top:1px solid var(--line);padding-top:12px}
@@ -552,6 +552,8 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 function wpick(arr,wf){const tot=arr.reduce((s,x)=>s+wf(x),0);let r=Math.random()*tot;for(const x of arr){r-=wf(x);if(r<=0)return x}return arr[arr.length-1]}
 const fmt$=n=>(n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('en-US');
 function clockStr(t){const m=480+Math.floor(t);const d=Math.floor(m/1440)+1;const h=Math.floor(m%1440/60),mm=m%60;return `Day ${d} · ${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+function fmtDur(min){min=Math.max(0,Math.round(min));const h=Math.floor(min/60),m=min%60;
+  const hs=h?`${h} hour${h>1?'s':''}`:'',ms=`${m} minute${m!==1?'s':''}`;return h?(m?`${hs} and ${ms}`:hs):ms}
 function realTime(ms){return new Date(ms).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
 function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
 
@@ -652,7 +654,7 @@ function finishTreat(p,d){
   log(`${pname(p)} treated for ${c.n}. Collected ${fmt$(amt)} (${p.ins}).`,'good');toast(`${p.first} treated · +${fmt$(amt)}`,'good');
   p.treated=true;p.busy=null;p.deadline=null;
   if(c.los&&d&&S.depts[d]){removeFrom(p);p.loc=d;p.inW=false;p.tq=[];S.depts[d].adm.push(p.id);p.adm={d,start:S.t,until:S.t+c.los*DAY,days:c.los};p.v++;
-    log(`${pname(p)} admitted to a ${DEPT[d].name} recovery bed for ${c.los*DAY} minutes.`);dirty=true;return}
+    log(`${pname(p)} admitted to a ${DEPT[d].name} recovery bed for ${fmtDur(c.los*DAY)}.`);dirty=true;return}
   toPharmOrHome(p);
 }
 function dischargeAdm(p){
@@ -726,7 +728,7 @@ function renderSide(){
     h+=`<div class="testbox"><h3>Test tools</h3><div class="tgrid">
       <button class="btn sm" data-act="tmoney" data-n="10000">+$10,000</button><button class="btn sm" data-act="tmoney" data-n="100000">+$100,000</button>
       <button class="btn sm" data-act="tunlock">Unlock all</button><button class="btn sm" data-act="tstaff">Staff all depts</button>
-      <button class="btn sm" data-act="tskip" data-n="10">Skip 10 min</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 min</button>
+      <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
       <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear reception</button></div>
       <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
   h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
@@ -771,7 +773,7 @@ function card(p){
    <span class="meta">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span>
    <span class="status ${cls}">${st}</span>
    ${showBar?`<span class="bar ${p.busy||p.adm?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
-   ${p.deadline&&!p.busy?`<span class="timeline"><span>Leaves in</span><span data-dlt="${p.id}"></span></span>`:''}
+   ${p.deadline&&!p.busy?`<span class="timeline">Leaves in <span data-dlt="${p.id}"></span></span>`:''}
   </button>`;
 }
 function slots(ids,max,label){
@@ -822,7 +824,7 @@ function renderMain(){
         h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Bed')}</section>
         <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a bed opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
         if(d.kind==='clinic'){const nb=D.beds||0;
-          h+=`<section class="zone"><div class="zone-h"><h2>Recovery beds</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))} per ${DAY} min</span>
+          h+=`<section class="zone"><div class="zone-h"><h2>Recovery beds</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))} per ${fmtDur(DAY)}</span>
             <span class="note">Bigger cases recover here after treatment, then you discharge them.</span>
             <button class="btn sm" data-act="addbed" data-d="${v}" ${nb>=BEDMAX||S.money<BED_COST?'disabled':''}>${nb>=BEDMAX?'Max beds':`Add bed · ${fmt$(BED_COST)}`}</button></div>
             ${slots(D.adm,nb,'Recovery')}</section>`}
@@ -842,7 +844,7 @@ function bookHTML(){
       cards+=`<article class="case"><div class="case-h"><span class="tri ${c.p}"></span><b class="pr-${c.p}">${esc(c.n)}</b><span class="mono seen">seen ${k}×</span></div>
         <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
         <dl><dt>Treated in</dt><dd>${esc(c.t.map(t=>DEPT[t].name).join(', '))}</dd>
-        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}</dd><dt>Recovery</dt><dd>${c.los?`${c.los*DAY} min in a recovery bed (real-life stay about ${c.los} day${c.los>1?'s':''})`:'Goes home after treatment'}</dd>
+        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}</dd><dt>Recovery</dt><dd>${c.los?`${fmtDur(c.los*DAY)} in a recovery bed (real-life stay about ${c.los} day${c.los>1?'s':''})`:'Goes home after treatment'}</dd>
         <dt>Prescription</dt><dd>${esc(c.rx.map(r=>MEDS[r].name).join(', '))}</dd></dl></article>`});
     if(cards)h+=`<section class="zone"><div class="zone-h"><h2>${esc(d.name)}</h2></div><div class="cases">${cards}</div></section>`});
   setTimeout(()=>{const el=document.getElementById('bookCount');if(el)el.textContent=`${known} of ${CONDS.length} discovered`},0);
@@ -862,7 +864,7 @@ function chartHTML(p){
     else if(p.autopsy)h+=`<div class="sec"><div class="callout"><b>Cause of death:</b> ${esc(c.n)}. Treated in ${esc(c.t.map(t=>DEPT[t].name).join(' or '))}.</div>
       <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
       <button class="btn" data-act="release">Release body</button></div>`;
-    else h+=`<div class="sec"><button class="btn primary" data-act="autopsy" ${canWork('path')?'':'disabled'}>Perform autopsy · 30 min</button>
+    else h+=`<div class="sec"><button class="btn primary" data-act="autopsy" ${canWork('path')?'':'disabled'}>Perform autopsy · 30 minutes</button>
       ${S.depts.path.lead?'':'<span class="empty-note">Hire a pathologist first.</span>'}</div>`;
     return h;
   }
@@ -883,7 +885,7 @@ function chartHTML(p){
   // findings
   if(p.adm){const room=c.los*roomRate(p.adm.d);
     h+=`<div class="sec"><div class="callout good"><b>${esc(c.n)}</b><br>Treated: ${esc(c.tx[0])}</div></div>
-    <div class="sec"><h3>Recovery stay <span>${c.los*DAY} min</span></h3>
+    <div class="sec"><h3>Recovery stay <span>${fmtDur(c.los*DAY)}</span></h3>
      ${p.adm.ready?`<div class="callout good">Recovery complete. Discharge to free the bed and collect room charges.</div>`
       :`<div class="busybox"><b>Recovering in ${esc(DEPT[p.adm.d].name)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-admt="${p.id}"></span></div>`}
      <div class="bill"><span>Room charges on discharge</span><b>${fmt$(room)} → you collect ${fmt$(room*p.cov)}</b></div>
@@ -902,7 +904,7 @@ function chartHTML(p){
 
   if(p.dx===p.c){
     const here=c.t.includes(L);
-    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}${c.los?`<br>Then ${c.los*DAY} min in a recovery bed`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}${c.los?`<br>Then ${fmtDur(c.los*DAY)} in a recovery bed`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
      ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Start treatment</button>${!canWork(L)&&!p.busy?`<span class="empty-note">All ${leadRole(L)[0].toLowerCase()} are busy.</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
@@ -913,7 +915,7 @@ function chartHTML(p){
      ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a bed opens.</div>':''}
      <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
       const qi=(p.tq||[]).indexOf(x);const run=!!(p.busy&&p.busy.k==='exam'&&p.busy.x===x);
-      return `<button class="exam ${dn?'done':''} ${qi>=0?'queued':''} ${run?'running':''}" data-act="exam" data-x="${x}" ${dn||run||(qi<0&&nq>=TQMAX)?'disabled':''} ${qi>=0?'aria-pressed="true"':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${run?'Running now':qi>=0?`Queued #${qi+1} · tap to remove`:`${dur(e.min,L)} min · ${fmt$(e.cost)}`}</span></button>`}).join('')}</div></div>`;
+      return `<button class="exam ${dn?'done':''} ${qi>=0?'queued':''} ${run?'running':''}" data-act="exam" data-x="${x}" ${dn||run||(qi<0&&nq>=TQMAX)?'disabled':''} ${qi>=0?'aria-pressed="true"':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${run?'Running now':qi>=0?`Queued #${qi+1} · tap to remove`:`${fmtDur(dur(e.min,L))} · ${fmt$(e.cost)}`}</span></button>`}).join('')}</div></div>`;
   }
 
   // actions
@@ -928,7 +930,7 @@ function chartHTML(p){
   } else if(L==='rec')h+=`<span class="empty-note">Tests and diagnosis happen once they're in a department.</span>`;
   else if(dk==='diag')h+=`<span class="empty-note">Diagnostic departments run tests only. Send them back to a ward to diagnose.</span>`;
   const canStab=['er','icu'].includes(L)&&p.deadline&&c.p==='r'&&p.stab<2;
-  h+=`<div class="line" style="flex-wrap:wrap">${canStab?`<button class="btn" data-act="stab" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Stabilize (+25 min, $400)</button>`:''}
+  h+=`<div class="line" style="flex-wrap:wrap">${canStab?`<button class="btn" data-act="stab" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Stabilize (+25 minutes, $400)</button>`:''}
      <button class="btn danger" data-act="xfer" ${p.busy?'disabled':''}>Transfer to another hospital</button></div></div>
    <div class="bill"><span>Charges so far</span><b>${fmt$(p.bill)} → you collect ${fmt$(p.bill*p.cov)}</b></div></div>`;
   return h;
@@ -956,15 +958,15 @@ function renderTop(){
 function tickUI(){
   document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
-  document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':`${Math.max(0,Math.ceil(S.next-S.t))} min`;
+  document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':fmtDur(Math.ceil(S.next-S.t));
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
     else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
-    el.textContent=el.classList.contains('tag')?`${cond(p).p==='r'?'Critical in':'Leaves in'} ${r} min`:`${r} min`;el.classList.toggle('urgent',r<=10)});
-  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${Math.max(0,Math.ceil(p.adm.until-S.t))} min left`});
-  document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${Math.max(0,Math.ceil(p.busy.end-S.t))} min left`});
+    el.textContent=el.classList.contains('tag')?`${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10)});
+  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${fmtDur(Math.ceil(p.adm.until-S.t))} left`});
+  document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${fmtDur(Math.ceil(p.busy.end-S.t))} left`});
 }
 function render(){
   if(!S){document.getElementById('app').hidden=true;document.getElementById('setup').hidden=false;return}
