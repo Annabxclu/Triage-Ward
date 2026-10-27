@@ -551,7 +551,7 @@ const cond=p=>CONDS[p.c];
 
 function arrive(){
   if(S.rec.length>=RECMAX){S.st.away++;rep(-1);dirty=true;return}
-  const ci=CONDS.indexOf(wpick(CONDS,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
+  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=CONDS.indexOf(wpick(pool,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
   const id='p'+(S.seq++);
