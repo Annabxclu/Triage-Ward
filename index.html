@@ -97,6 +97,16 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .unlock{border:1px solid var(--line);background:var(--panel);border-radius:4px;font-family:var(--f-mono);font-size:11px;padding:2px 6px}
 .unlock:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .unlock:disabled{opacity:.5;cursor:not-allowed}
+.testbox{border:1px dashed var(--amber);background:var(--amber-bg);border-radius:8px;padding:10px;display:grid;gap:8px}
+.testbox,.testbox>*{min-width:0}
+.side{overflow-x:hidden}
+.testbox h3{color:var(--amber);padding:0}
+.testbox label{font-size:12px;font-weight:700;color:var(--muted)}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tgrid .btn{padding:5px 6px;font-size:12px}
+.tline{display:flex;gap:5px}
+.tline select{flex:1;min-width:0;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:12px}
+#testBtn.on{background:var(--amber);color:var(--band);border-color:var(--amber)}
 .lockgrp summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;font-family:var(--f-sign);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .lockgrp summary::-webkit-details-marker{display:none}
 .lockgrp summary::before{content:"";width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
@@ -295,6 +305,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
+      <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
     </div>
   </header>
@@ -560,9 +571,9 @@ function rep(n){}
 const pname=p=>`${p.first} ${p.last}`;
 const cond=p=>CONDS[p.c];
 
-function arrive(){
+function arrive(force){
   if(S.rec.length>=RECMAX){S.st.away++;rep(-1);dirty=true;return}
-  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=CONDS.indexOf(wpick(pool,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
+  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
   const id='p'+(S.seq++);
@@ -703,12 +714,22 @@ function step(dt){
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function locName(l){return l==='rec'?'Reception':l==='morgue'?'Morgue':DEPT[l]?DEPT[l].name:l}
 
+let testCond='';
 function renderSide(){
+  const ae=document.activeElement;if(ae&&ae.id==='testCond')return;
   const on=DEPTS.filter(d=>S.depts[d.id].on), off=DEPTS.filter(d=>!S.depts[d.id].on);
   const redIn=ids=>ids.filter(i=>S.P[i]&&cond(S.P[i]).p==='r'&&!S.P[i].treated).length;
   const item=(id,code,name,count,hue,reds)=>`<button class="navi ${S.view===id?'on':''}" data-act="view" data-v="${id}">
     <span class="badge" style="--h:${hue}">${code}</span><span class="nm">${esc(name)}</span>${reds?`<span class="redct">${reds}!</span>`:''}<span class="ct">${count}</span></button>`;
-  let h=`<div><h3>Floor directory</h3><div class="nav open-list">`;
+  let h='';
+  if(S.test){const groups={};CONDS.forEach((cc,i)=>{(groups[cc.d]=groups[cc.d]||[]).push([cc.n,i])});
+    h+=`<div class="testbox"><h3>Test tools</h3><div class="tgrid">
+      <button class="btn sm" data-act="tmoney" data-n="10000">+$10,000</button><button class="btn sm" data-act="tmoney" data-n="100000">+$100,000</button>
+      <button class="btn sm" data-act="tunlock">Unlock all</button><button class="btn sm" data-act="tstaff">Staff all depts</button>
+      <button class="btn sm" data-act="tskip" data-n="10">Skip 10 min</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 min</button>
+      <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear reception</button></div>
+      <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
+  h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec));
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
   on.forEach(d=>{const D=S.depts[d.id];const n=d.kind==='path'?S.morgue.length:D.q.length+D.w.length+(D.adm||[]).length;h+=item(d.id,d.code,d.name,n,d.hue,redIn([...D.q,...D.w]))});
@@ -929,6 +950,7 @@ function renderChart(){
 }
 function renderTop(){
   document.getElementById('hn').textContent=S.name;
+  document.getElementById('testBtn').classList.toggle('on',!!S.test);
   const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
 function tickUI(){
@@ -960,6 +982,14 @@ document.addEventListener('click',e=>{
     case 'close':S.pid=null;break;
     case 'addbed':{const d=b.dataset.d,D=S.depts[d];if(S.money<BED_COST||D.beds>=BEDMAX)return;S.money-=BED_COST;D.beds++;toast(`Recovery bed added to ${DEPT[d].name}.`);break}
     case 'discharge':p&&dischargeAdm(p);break;
+    case 'testmode':S.test=!S.test;if(S.test)log('Test mode turned on.','warn');break;
+    case 'tmoney':S.money+=+b.dataset.n;toast(`Added ${fmt$(+b.dataset.n)}.`);break;
+    case 'tunlock':DEPTS.forEach(d=>{S.depts[d.id].on=true});log('Test mode: every department unlocked.','warn');toast('Every department unlocked.');break;
+    case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
+    case 'tskip':step(+b.dataset.n);toast(`Skipped ${b.dataset.n} minutes.`);break;
+    case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
+    case 'tclear':[...S.rec].forEach(id=>gone(S.P[id]));toast('Reception cleared.');break;
+    case 'tspawn':{if(S.rec.length>=RECMAX){toast('Reception is full.');return}const v=document.getElementById('testCond').value;arrive(v===''?null:+v);S.view='rec';break}
     case 'pause':S.speed=S.speed?0:1;break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'treat':p&&startTreat(p);break;
@@ -983,6 +1013,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
 document.addEventListener('toggle',e=>{if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
+document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
 
