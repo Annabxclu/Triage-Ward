@@ -17,4 +17,4 @@ Every confirmed case goes into the **Casebook** with its findings, tests, treatm
 Insurance plans and patient names are fictional. Medical content is simplified for gameplay and is not medical advice.
 
 ## Running locally
-It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage.
+It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage. The game runs on real time and pauses while the page is closed.

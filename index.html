@@ -77,6 +77,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .speed{display:flex;border:1px solid var(--band-line);border-radius:6px;overflow:hidden}
 .speed button{background:transparent;border:0;color:var(--band-muted);padding:6px 10px;font-family:var(--f-mono);font-size:13px}
 .speed button.on{background:var(--accent);color:var(--accent-ink)}
+.top .menu.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .top .menu{background:transparent;border:1px solid var(--band-line);color:var(--band-muted);border-radius:6px;padding:6px 10px;font-size:13px}
 
 .body{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:0}
@@ -279,6 +280,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <li>A patient reaches Reception every 5 minutes. Up to 10 can wait at check-in.</li>
         <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
+        <li>Everything runs on real time: a 20-minute CT takes 20 real minutes. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
     </form>
@@ -292,12 +294,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
-      <div class="speed" id="speed" role="group" aria-label="Game speed">
-        <button data-act="speed" data-s="0" title="Pause">II</button>
-        <button data-act="speed" data-s="1">1×</button>
-        <button data-act="speed" data-s="2">2×</button>
-        <button data-act="speed" data-s="4">4×</button>
-      </div>
+      <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
     </div>
   </header>
@@ -342,7 +339,7 @@ const NURSE_PAY = 450, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
 const PAT = {r:30, y:150, g:300};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
-const MS_PER_MIN = 1500;
+const MS_PER_MIN = 60000; // real time: one minute is one minute
 
 const EXAMS = {};
 function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min,cost,depts,norm}}
@@ -534,6 +531,7 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 function wpick(arr,wf){const tot=arr.reduce((s,x)=>s+wf(x),0);let r=Math.random()*tot;for(const x of arr){r-=wf(x);if(r<=0)return x}return arr[arr.length-1]}
 const fmt$=n=>(n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('en-US');
 function clockStr(t){const m=480+Math.floor(t);const d=Math.floor(m/1440)+1;const h=Math.floor(m%1440/60),mm=m%60;return `Day ${d} · ${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+function realTime(ms){return new Date(ms).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
 function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
 
 function fresh(name){
@@ -546,7 +544,7 @@ function fresh(name){
 function save(){try{if(S)localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}return null}
 
-function log(msg,kind=''){S.log.unshift({t:S.t,msg,kind});if(S.log.length>40)S.log.length=40}
+function log(msg,kind=''){S.log.unshift({t:S.t,at:Date.now(),msg,kind});if(S.log.length>40)S.log.length=40}
 function toast(msg,kind=''){const el=document.createElement('div');el.className='toast '+kind;el.textContent=msg;const box=document.getElementById('toasts');box.appendChild(el);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>el.remove(),4200)}
 function rep(n){}
 const pname=p=>`${p.first} ${p.last}`;
@@ -667,8 +665,8 @@ function complete(p){
 function step(dt){
   S.t+=dt;
   while(S.t>=S.next){arrive();S.next+=ARRIVAL}
-  const day=Math.floor((480+S.t)/1440);
-  if(day>S.day){S.day=day;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
+  const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
+  if(today!==S.payDate){S.payDate=today;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
     S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
@@ -736,7 +734,7 @@ function slots(ids,max,label){
   for(let i=ids.length;i<max;i++)h+=`<div class="slot-empty">${label} ${i+1}</div>`;
   return `<div class="slots">${h}</div>`;
 }
-function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
+function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${l.at?realTime(l.at):hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
 
 function renderMain(){
   const m=document.getElementById('main');let h='';const v=S.view;
@@ -894,10 +892,10 @@ function renderChart(){
 }
 function renderTop(){
   document.getElementById('hn').textContent=S.name;
-  document.querySelectorAll('#speed button').forEach(b=>b.classList.toggle('on',+b.dataset.s===S.speed));
+  const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
 function tickUI(){
-  document.getElementById('clock').textContent=clockStr(S.t);
+  document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':`${Math.max(0,Math.ceil(S.next-S.t))} min`;
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
@@ -921,7 +919,7 @@ document.addEventListener('click',e=>{
     case 'view':S.view=b.dataset.v;break;
     case 'pt':S.pid=b.dataset.pid;break;
     case 'close':S.pid=null;break;
-    case 'speed':S.speed=+b.dataset.s;break;
+    case 'pause':S.speed=S.speed?0:1;break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'treat':p&&startTreat(p);break;
     case 'stab':p&&startStab(p);break;
@@ -950,12 +948,13 @@ document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefa
 /* ================= LOOP ================= */
 let saveAt=0;
 function loop(){
-  const now=performance.now();let dtReal=Math.min(now-lastReal,2000);lastReal=now;
-  if(S&&S.speed){step(dtReal/MS_PER_MIN*S.speed)}
+  const now=performance.now();let dtReal=Math.min(now-lastReal,3600000);lastReal=now;
+  if(S&&S.speed){step(dtReal/MS_PER_MIN)}
   if(S){if(dirty)render();else tickUI();if(now-saveAt>3000){save();saveAt=now}}
 }
 function start(data){
   S=(data&&data.state)||load();
+  if(S)S.speed=S.speed?1:0;
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]}});
   render();setInterval(loop,200);
 }
