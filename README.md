@@ -6,7 +6,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 
 ## How a case flows
 1. A patient reaches Reception every 5 game minutes (10 can wait). Name color is triage: red (30 min to live), yellow, green.
-2. Read the complaint and send them to an open department.
+2. Read the complaint and send them to an open department. In the ER, assign a **triage room** and a named **nurse** for the first tests (vitals, ECG, swabs, urine and glucose checks), then move them to the **waiting room** or a **diagnostic room** where you assign a **doctor** to examine, diagnose and treat.
 3. Run real tests to uncover hidden findings. Imaging is in Radiology, blood work in the Lab; send patients there and back.
 4. Pick the diagnosis from 73 real conditions. A wrong guess sends the patient home without paying.
 5. Treat in a department that handles the condition, or transfer to another hospital. Bigger cases (surgery, heart attacks, strokes, sepsis, labor…) then recover in that department's recovery beds; discharge them when the stay ends to collect room charges.
