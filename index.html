@@ -823,7 +823,7 @@ function renderSide(){
   h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec));
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
-  on.forEach(d=>{const D=S.depts[d.id];const n=d.kind==='path'?S.morgue.length:D.q.length+D.w.length+(D.adm||[]).length;h+=item(d.id,d.code,d.name,n,d.hue,redIn([...D.q,...D.w]))});
+  on.forEach(d=>{const D=S.depts[d.id];const all=[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const n=d.kind==='path'?S.morgue.length:all.length;h+=item(d.id,d.code,d.name,n,d.hue,redIn(all))});
   h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
