@@ -666,7 +666,7 @@ function tryNext(p){
 }
 function startTreat(p){
   const c=cond(p);if(p.dx!==p.c||p.busy||p.inW||!c.t.includes(p.loc)||!canTreat(p))return;
-  if(c.los&&bedsUsed(p.loc)>=S.depts[p.loc].beds){toast(`No recovery bed free in ${DEPT[p.loc].name}. Discharge someone or add a bed.`,'warn');return}
+  if(c.los&&bedsUsed(p.loc)>=S.depts[p.loc].beds){toast(`No ${bedWord(p.loc)} free in ${DEPT[p.loc].name}. Discharge someone or add ${isObs(p.loc)?'a room':'a bed'}.`,'warn');return}
   p.tq=[];p.busy={k:'treat',d:p.loc,start:S.t,end:S.t+dur(c.tx[1],p.loc)};p.deadline=null;p.v++;dirty=true;
   log(`Treatment started for ${pname(p)}: ${c.tx[0]}.`);
 }
@@ -701,7 +701,7 @@ function finishTreat(p,d){
   log(`${pname(p)} treated for ${c.n}. Collected ${fmt$(amt)} (${p.ins}).`,'good');toast(`${p.first} treated · +${fmt$(amt)}`,'good');
   p.treated=true;p.busy=null;p.deadline=null;
   if(c.los&&d&&S.depts[d]){removeFrom(p);p.loc=d;p.inW=false;p.tq=[];S.depts[d].adm.push(p.id);p.adm={d,start:S.t,until:S.t+c.los*DAY,days:c.los};p.v++;
-    log(`${pname(p)} admitted to a ${DEPT[d].name} recovery bed for ${fmtDur(c.los*DAY)}.`);dirty=true;return}
+    log(`${pname(p)} admitted to ${isObs(d)?'an observation room':`a ${DEPT[d].name} recovery bed`} for ${fmtDur(c.los*DAY)}.`);dirty=true;return}
   toPharmOrHome(p);
 }
 function dischargeAdm(p){
@@ -807,7 +807,7 @@ function card(p){
   const c=cond(p);let st='Waiting',cls='';
   if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treating':p.busy.k==='stab'?'Stabilizing':'Autopsy';st=`${lbl} · <span class="mono" data-bzt="${p.id}"></span>`;cls='busy'}
   else if(p.loc==='morgue')st=p.autopsy?`Cause: ${esc(c.n)}`:'Awaiting autopsy';
-  else if(p.adm){st=p.adm.ready?'Ready for discharge':`Recovering · <span class="mono" data-admt="${p.id}"></span>`;cls=p.adm.ready?'dx':''}
+  else if(p.adm){st=p.adm.ready?'Ready for discharge':`${isObs(p.adm.d)?'In observation':'Recovering'} · <span class="mono" data-admt="${p.id}"></span>`;cls=p.adm.ready?'dx':''}
   else if(p.treated)st='Waiting for medication';
   else if(p.inW)st='In waiting room';
   else if(p.dx===p.c){st=`Dx: ${esc(c.n)}`;cls='dx'}
@@ -831,11 +831,13 @@ function slots(ids,max,label,compact){
   else for(let i=ids.length;i<max;i++)h+=`<div class="slot-empty">${label} ${i+1}</div>`;
   return `<div class="slots">${h}</div>`;
 }
-function recoveryZone(v){const D=S.depts[v],nb=D.beds||0;
-  return `<section class="zone"><div class="zone-h"><h2>Recovery beds</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))} per ${fmtDur(DAY)}</span>
-    <span class="note">Bigger cases recover here after treatment, then you discharge them.</span>
-    <button class="btn sm" data-act="addbed" data-d="${v}" ${nb>=BEDMAX||S.money<BED_COST?'disabled':''}>${nb>=BEDMAX?'Max beds':`Add bed · ${fmt$(BED_COST)}`}</button></div>
-    ${slots(D.adm,nb,'Recovery')}</section>`}
+const isObs=d=>d==='er';
+const bedWord=d=>isObs(d)?'observation room':'recovery bed';
+function recoveryZone(v){const D=S.depts[v],nb=D.beds||0,o=isObs(v);
+  return `<section class="zone"><div class="zone-h"><h2>${o?'Observation rooms':'Recovery beds'}</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))} per ${fmtDur(DAY)}</span>
+    <span class="note">${o?'Patients who need monitoring stay here after treatment, then you discharge them.':'Bigger cases recover here after treatment, then you discharge them.'}</span>
+    <button class="btn sm" data-act="addbed" data-d="${v}" ${nb>=BEDMAX||S.money<BED_COST?'disabled':''}>${nb>=BEDMAX?(o?'Max rooms':'Max beds'):`${o?'Add room':'Add bed'} · ${fmt$(BED_COST)}`}</button></div>
+    ${slots(D.adm,nb,o?'Observation':'Recovery')}</section>`}
 function erView(){const d=DEPT.er,D=S.depts.er;
   const roster=role=>D.staff.filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
     return `<div class="person ${w?'busy':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
@@ -963,9 +965,9 @@ function chartHTML(p){
   // findings
   if(p.adm){const room=c.los*roomRate(p.adm.d);
     h+=`<div class="sec"><div class="callout good"><b>${esc(c.n)}</b><br>Treated: ${esc(c.tx[0])}</div></div>
-    <div class="sec"><h3>Recovery stay <span>${fmtDur(c.los*DAY)}</span></h3>
-     ${p.adm.ready?`<div class="callout good">Recovery complete. Discharge to free the bed and collect room charges.</div>`
-      :`<div class="busybox"><b>Recovering in ${esc(DEPT[p.adm.d].name)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-admt="${p.id}"></span></div>`}
+    <div class="sec"><h3>${isObs(p.adm.d)?'Observation':'Recovery stay'} <span>${fmtDur(c.los*DAY)}</span></h3>
+     ${p.adm.ready?`<div class="callout good">${isObs(p.adm.d)?'Observation':'Recovery'} complete. Discharge to free the ${isObs(p.adm.d)?'room':'bed'} and collect room charges.</div>`
+      :`<div class="busybox"><b>${isObs(p.adm.d)?'In ER observation':`Recovering in ${esc(DEPT[p.adm.d].name)}`}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-admt="${p.id}"></span></div>`}
      <div class="bill"><span>Room charges on discharge</span><b>${fmt$(room)} → you collect ${fmt$(room*p.cov)}</b></div>
      <div><button class="btn primary" data-act="discharge" ${p.adm.ready?'':'disabled'}>Discharge</button></div></div>`;
     return h}
@@ -983,7 +985,7 @@ function chartHTML(p){
 
   if(p.dx===p.c){
     const here=c.t.includes(L);
-    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}${c.los?`<br>Then ${fmtDur(c.los*DAY)} in a recovery bed`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}${c.los?`<br>Then ${fmtDur(c.los*DAY)} in ${here&&isObs(L)?'an observation room':'a recovery bed'}`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
      ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${L==='er'?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
