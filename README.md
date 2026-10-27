@@ -17,7 +17,7 @@ Every confirmed case goes into the **Casebook** with its findings, tests, treatm
 Insurance plans and patient names are fictional. Medical content is simplified for gameplay and is not medical advice.
 
 ## Running locally
-It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage. The game runs on real time and pauses while the page is closed.
+It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage. One in-game day lasts 48 real minutes (a game minute is 2 seconds), and the game pauses while the page is closed.
 
 ## Test mode
 Click **Test mode** in the top bar to open test tools in the sidebar: add money, unlock and staff every department, skip time, finish all running timers, clear reception, or add a patient with a specific condition. Click it again to hide the tools.

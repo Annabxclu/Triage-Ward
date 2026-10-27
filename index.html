@@ -315,7 +315,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <li>A patient reaches Reception every 5 minutes. Up to 10 can wait at check-in.</li>
         <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
-        <li>Everything runs on real time: a 20-minute CT takes 20 real minutes. Closing the page pauses your hospital.</li>
+        <li>One in-game day lasts 48 real minutes, so a game minute is 2 seconds. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
     </form>
@@ -375,7 +375,7 @@ const NURSE_PAY = 450, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
 const PAT = {r:30, y:150, g:300};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
-const MS_PER_MIN = 60000; // real time: one minute is one minute
+const MS_PER_MIN = 2000; // one in-game day (1440 min) = 48 real minutes
 
 const EXAMS = {};
 function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min,cost,depts,norm}}
@@ -787,8 +787,8 @@ function complete(p){
 function step(dt){
   S.t+=dt;
   while(S.t>=S.next){arrive();S.next+=ARRIVAL}
-  const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
-  if(today!==S.payDate){S.payDate=today;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
+  const day=Math.floor((480+S.t)/1440);if(S.day==null)S.day=day;
+  if(day>S.day){S.day=day;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
     S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
@@ -917,7 +917,7 @@ function erFlowHTML(p){const D=S.depts.er;let h='';const b=p.busy?'disabled':'';
   else if(p.stage==='dx')h=`${p.doc?`<p class="flowtxt">With <b>${esc(staffName(staffById(p.doc)))}</b>.</p>`:`<p class="flowtxt">In a diagnostic room. Assign a doctor:</p><div class="line wrap">${pickBtns('doctor')}</div>`}
      <div class="line wrap"><button class="btn sm" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>Back to waiting room (${D.w.length}/${WMAX})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
   return h?`<div class="sec"><h3>Emergency room <span>${esc(STAGE[p.stage]||'')}</span></h3><div class="act">${h}</div></div>`:''}
-function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${l.at?realTime(l.at):hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
+function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
 
 function renderMain(){
   const m=document.getElementById('main');let h='';const v=S.view;
@@ -1109,7 +1109,7 @@ function renderTop(){
   const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
 function tickUI(){
-  document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
+  document.getElementById('clock').textContent=S.speed?clockStr(S.t):`Paused · ${clockStr(S.t)}`;
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':fmtDur(Math.ceil(S.next-S.t));
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
