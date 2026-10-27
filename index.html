@@ -315,7 +315,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <li>A patient reaches Reception every 5 minutes. Up to 10 can wait at check-in.</li>
         <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
-        <li>One in-game day lasts 48 real minutes, so a game minute is 2 seconds. Closing the page pauses your hospital.</li>
+        <li>At 1× a game minute is 15 real seconds, so a red patient's 30 minutes is about 7½ real minutes. Use 2× or 4× for quiet stretches. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
     </form>
@@ -329,7 +329,12 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
-      <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
+      <div class="speed" id="speed" role="group" aria-label="Game speed">
+        <button data-act="speed" data-s="0" title="Pause">Pause</button>
+        <button data-act="speed" data-s="1">1×</button>
+        <button data-act="speed" data-s="2">2×</button>
+        <button data-act="speed" data-s="4">4×</button>
+      </div>
       <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
     </div>
@@ -375,7 +380,7 @@ const NURSE_PAY = 450, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
 const PAT = {r:30, y:150, g:300};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
-const MS_PER_MIN = 2000; // one in-game day (1440 min) = 48 real minutes
+const MS_PER_MIN = 15000; // at 1×: one game minute = 15 real seconds, one game day = 6 real hours
 
 const EXAMS = {};
 function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min,cost,depts,norm}}
@@ -1106,7 +1111,7 @@ function renderChart(){
 function renderTop(){
   document.getElementById('hn').textContent=S.name;
   document.getElementById('testBtn').classList.toggle('on',!!S.test);
-  const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
+  document.querySelectorAll('#speed button').forEach(b=>b.classList.toggle('on',+b.dataset.s===S.speed));
 }
 function tickUI(){
   document.getElementById('clock').textContent=S.speed?clockStr(S.t):`Paused · ${clockStr(S.t)}`;
@@ -1145,7 +1150,7 @@ document.addEventListener('click',e=>{
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
     case 'tclear':[...S.rec].forEach(id=>gone(S.P[id]));toast('Reception cleared.');break;
     case 'tspawn':{if(S.rec.length>=RECMAX){toast('Reception is full.');return}const v=document.getElementById('testCond').value;arrive(v===''?null:+v);S.view='rec';break}
-    case 'pause':S.speed=S.speed?0:1;break;
+    case 'speed':S.speed=+b.dataset.s;break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'order':{if(!p)return;const x=b.dataset.x;p.orders=p.orders||[];const i=p.orders.indexOf(x);if(i>=0)p.orders.splice(i,1);else p.orders.push(x);p.v++;break}
     case 'treat':p&&startTreat(p);break;
@@ -1181,12 +1186,12 @@ document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefa
 let saveAt=0;
 function loop(){
   const now=performance.now();let dtReal=Math.min(now-lastReal,3600000);lastReal=now;
-  if(S&&S.speed){step(dtReal/MS_PER_MIN)}
+  if(S&&S.speed){step(dtReal/MS_PER_MIN*S.speed)}
   if(S){if(dirty)render();else tickUI();if(now-saveAt>3000){save();saveAt=now}}
 }
 function start(data){
   S=(data&&data.state)||load();
-  if(S)S.speed=S.speed?1:0;
+  if(S&&![0,1,2,4].includes(S.speed))S.speed=1;
   if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();const D=S.depts.er;
     const old=[...D.q,...D.w].filter(id=>S.P[id]&&!S.P[id].stage);
     if(old.length){D.q=D.q.filter(id=>!old.includes(id));D.w=D.w.filter(id=>!old.includes(id));
