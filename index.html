@@ -96,6 +96,13 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .unlock{border:1px solid var(--line);background:var(--panel);border-radius:4px;font-family:var(--f-mono);font-size:11px;padding:2px 6px}
 .unlock:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .unlock:disabled{opacity:.5;cursor:not-allowed}
+.lockgrp summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;font-family:var(--f-sign);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lockgrp summary::-webkit-details-marker{display:none}
+.lockgrp summary::before{content:"";width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+.lockgrp[open] summary::before{transform:rotate(90deg)}
+.lockgrp summary .mono{margin-left:auto;letter-spacing:0;font-size:12px}
+.lockgrp summary:hover{background:var(--panel2);color:var(--ink)}
+.lockgrp .nav{margin-top:4px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 6px}
 .stats div{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 .stats b{font-family:var(--f-mono);color:var(--ink)}
@@ -514,6 +521,7 @@ const SENIOR = {n:'SilverYears',c:.8,w:0};
 /* ================= STATE ================= */
 const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
 let BOOK={}; try{BOOK=JSON.parse(localStorage.getItem(BOOKKEY)||'{}')||{}}catch(e){BOOK={}}
+let lockedOpen=true;try{lockedOpen=localStorage.getItem('hospital-locked-open')!=='0'}catch(e){}
 let bookV=0,bookQ='',bookKey=null,mainMode=null;
 function learn(c){const first=!BOOK[c.n];BOOK[c.n]=(BOOK[c.n]||0)+1;bookV++;try{localStorage.setItem(BOOKKEY,JSON.stringify(BOOK))}catch(e){}
   if(first)log(`New casebook entry: ${c.n}.`,'good');}
@@ -670,11 +678,11 @@ function renderSide(){
   h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec));
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
   on.forEach(d=>{const D=S.depts[d.id];const n=d.kind==='path'?S.morgue.length:D.q.length+D.w.length;h+=item(d.id,d.code,d.name,n,d.hue,redIn([...D.q,...D.w]))});
-  h+=`</div></div><div><h3>Locked departments</h3><div class="nav">`;
+  h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
     <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
-  h+=`</div></div>
+  h+=`</div></details>
   <div><h3>Shift totals</h3><div class="stats">
    <div>Treated <b>${S.st.treated}</b></div><div>Transferred <b>${S.st.xfer}</b></div>
    <div>Left <b>${S.st.left}</b></div><div>Died <b>${S.st.died}</b></div>
@@ -926,6 +934,7 @@ document.addEventListener('click',e=>{
   dirty=true;render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
+document.addEventListener('toggle',e=>{if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
 
