@@ -844,11 +844,6 @@ function chartHTML(p){
      <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
       return `<button class="exam ${dn?'done':''}" data-act="exam" data-x="${x}" ${dn||p.busy||p.inW||!canWork(L)?'disabled':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${dur(e.min,L)} min · ${fmt$(e.cost)}</span></button>`}).join('')}</div></div>`;
   }
-  // elsewhere
-  const away={};EXAM_ORDER.forEach(x=>{if(x in p.res||examHere(x,L))return;const e=EXAMS[x];if(e.depts==='basic'){(away.er=away.er||[]).push(e.name);return}
-    const d=e.depts.find(dd=>S.depts[dd].on)||e.depts[0];(away[d]=away[d]||[]).push(e.name)});
-  const awayKeys=Object.keys(away);
-  if(awayKeys.length)h+=`<div class="sec"><h3>Tests in other departments</h3><div class="elsewhere">${awayKeys.map(d=>`<div><b>${esc(DEPT[d].name)}${S.depts[d].on?'':' 🔒'}</b> · ${esc(away[d].join(', '))}</div>`).join('')}</div></div>`;
 
   // actions
   const opts=DEPTS.filter(d=>S.depts[d.id].on&&d.id!==L&&(d.kind==='clinic'||d.kind==='diag')).map(d=>{const D=S.depts[d.id];const full=!space(d.id);
