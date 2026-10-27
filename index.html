@@ -542,7 +542,7 @@ const pname=p=>`${p.first} ${p.last}`;
 const cond=p=>CONDS[p.c];
 
 function arrive(){
-  if(S.rec.length>=RECMAX){S.st.away++;rep(-1);log('Reception was full. An arriving patient went to another hospital.','warn');return}
+  if(S.rec.length>=RECMAX){S.st.away++;rep(-1);dirty=true;return}
   const ci=CONDS.indexOf(wpick(CONDS,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
