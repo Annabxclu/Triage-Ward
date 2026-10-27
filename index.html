@@ -537,7 +537,7 @@ function fresh(name){
   const depts={};DEPTS.forEach(d=>depts[d.id]={on:d.id==='er',lead:d.id==='er'?1:0,nurse:d.id==='er'?1:0,q:[],w:[]});
   S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:ARRIVAL,depts,rec:[],morgue:[],P:{},seq:1,log:[],
      st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'rec',pid:null};
-  for(let i=0;i<3;i++)arrive();
+  arrive();
   log(`${name} opened its doors. The ER is staffed and ready.`,'good');
 }
 function save(){try{if(S)localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
