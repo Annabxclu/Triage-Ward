@@ -9,7 +9,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 2. Read the complaint and send them to an open department.
 3. Run real tests to uncover hidden findings. Imaging is in Radiology, blood work in the Lab; send patients there and back.
 4. Pick the diagnosis from 73 real conditions. A wrong guess sends the patient home without paying.
-5. Treat in a department that handles the condition, or transfer to another hospital.
+5. Treat in a department that handles the condition, or transfer to another hospital. Bigger cases (surgery, heart attacks, strokes, sepsis, labor…) then recover in that department's recovery beds; discharge them when the stay ends to collect room charges.
 6. With a Pharmacy open, choose the right OTC and prescription meds.
 
 Every confirmed case goes into the **Casebook** with its findings, tests, treatment and standard prescription.

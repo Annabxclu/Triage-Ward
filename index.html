@@ -510,6 +510,16 @@ C("Psoriasis flare","derm",["derm"],"g",[20,60],0,["*hx:Itchy patches on elbows 
 C("Scabies","derm",["derm","sh","er"],"g",[5,70],0,["*hx:Intense itching, worse at night","*hx:Roommate is itchy too","phys:Tiny burrows between the fingers","koh:Mites and eggs on scraping"],["Household treatment plan",15,200],["permeth","cetir"]);
 C("Stevens-Johnson syndrome","derm",["derm","icu"],"r",[18,70],0,["*hx:Started a new seizure medicine 2 weeks ago","*phys:Painful dusky rash, skin peeling off","phys:Sores in the mouth and eyes","vitals:Fever 39.0°C, heart rate 120","skinbx:Full-thickness epidermal necrosis"],["Stop the drug, burn-unit style wound care",180,26000],["morph"]);
 
+const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart attack)":3,"Atrial fibrillation with RVR":1,"Heart failure exacerbation":3,
+ "Tibial shaft fracture":2,"Hip fracture":3,"Community-acquired pneumonia":2,"Diabetic ketoacidosis":2,"Upper GI bleed":2,"Bacterial meningitis":4,"Urosepsis":3,
+ "Partial-thickness burns":5,"Gunshot wound to abdomen":4,"Spontaneous pneumothorax":2,"Acute appendicitis":1,"Acute cholecystitis":1,"Acute pancreatitis":3,
+ "Acute psychosis (schizophrenia)":4,"Bipolar disorder, manic episode":4,"Lung cancer":2,"Acute myeloid leukemia":5,"Breast cancer":1,"Ectopic pregnancy":1,
+ "Active labor":2,"Full-thickness hand burn":2,"Acute kidney injury, hyperkalemia":3,"Pyelonephritis":2,"Mandible fracture":1,"Ischemic stroke":3,
+ "Subarachnoid hemorrhage":5,"New-onset epilepsy":1,"Pulmonary embolism":2,"Stevens-Johnson syndrome":4};
+for(const k in LOS)if(!CONDS.some(c=>c.n===k))console.warn('LOS name not found',k);
+CONDS.forEach(c=>c.los=LOS[c.n]||0);
+const DAY = 10, BED_COST = 3000, BEDMAX = 10, START_BEDS = 2;
+const roomRate = d=>d==='icu'?4000:1500;
 const FIRST_F = ["Maya","Grace","Lucia","Amara","Hannah","Nora","Priya","Elena","Tasha","Ruth","Mei","Sofia","Zoe","Imani","Leah","Rosa","Ivy","Dana","June","Keisha","Ana","Hazel","Noor","Esther"];
 const FIRST_M = ["Marcus","Daniel","Owen","Rafael","Kwame","Theo","Samuel","Luis","Arjun","Victor","Jamal","Henry","Elijah","Tomás","Ray","Felix","Gus","Andre","Malik","Walter","Isaac","Diego","Kenji","Omar"];
 const LAST = ["Okafor","Reyes","Lindqvist","Patel","Brennan","Nakamura","Holloway","Adeyemi","Castillo","Marsh","Whitaker","Duarte","Kowalski","Abernathy","Chen","Fontaine","Delgado","Moreau","Greer","Osei","Yamada","Pruitt","Vance","Haddad","Sutton","Ibarra","Quinlan","Barros","Thorne","Ellison"];
@@ -535,7 +545,7 @@ function realTime(ms){return new Date(ms).toLocaleTimeString([],{hour:'numeric',
 function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
 
 function fresh(name){
-  const depts={};DEPTS.forEach(d=>depts[d.id]={on:d.id==='er',lead:d.id==='er'?1:0,nurse:d.id==='er'?1:0,q:[],w:[]});
+  const depts={};DEPTS.forEach(d=>depts[d.id]={on:d.id==='er',lead:d.id==='er'?1:0,nurse:d.id==='er'?1:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0});
   S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:ARRIVAL,depts,rec:[],morgue:[],P:{},seq:1,log:[],
      st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'rec',pid:null};
   arrive();
@@ -569,13 +579,14 @@ function addTo(p,d){const D=S.depts[d];if(D.q.length<QMAX){D.q.push(p.id);p.inW=
 function removeFrom(p){
   if(p.loc==='rec')S.rec=S.rec.filter(x=>x!==p.id);
   else if(p.loc==='morgue')S.morgue=S.morgue.filter(x=>x!==p.id);
-  else if(S.depts[p.loc]){const D=S.depts[p.loc];D.q=D.q.filter(x=>x!==p.id);D.w=D.w.filter(x=>x!==p.id);
+  else if(S.depts[p.loc]){const D=S.depts[p.loc];D.q=D.q.filter(x=>x!==p.id);D.adm=(D.adm||[]).filter(x=>x!==p.id);D.w=D.w.filter(x=>x!==p.id);
     while(D.q.length<QMAX&&D.w.length){const nid=D.w.shift();D.q.push(nid);const np=S.P[nid];if(np){np.inW=false;np.v++}}}
 }
 function gone(p){removeFrom(p);delete S.P[p.id];if(S.pid===p.id)S.pid=null;dirty=true}
 
 /* ---------- work capacity ---------- */
 function busyCount(d){let n=0;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.d===d)n++}return n}
+function bedsUsed(d){const D=S.depts[d];let n=(D.adm||[]).length;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.k==='treat'&&p.busy.d===d&&cond(p).los)n++}return n}
 function canWork(d){const D=S.depts[d];return D&&D.on&&D.lead>0&&busyCount(d)<D.lead}
 function dur(min,d){const D=S.depts[d];const cut=DEPT[d].kind==='clinic'?Math.min(.4,D.nurse*.1):0;return Math.max(1,Math.round(min*(1-cut)))}
 function examHere(x,d){const e=EXAMS[x];if(!d||!DEPT[d])return false;return e.depts==='basic'?DEPT[d].kind==='clinic':e.depts.includes(d)}
@@ -596,6 +607,7 @@ function tryNext(p){
 }
 function startTreat(p){
   const c=cond(p);if(p.dx!==p.c||p.busy||p.inW||!c.t.includes(p.loc)||!canWork(p.loc))return;
+  if(c.los&&bedsUsed(p.loc)>=S.depts[p.loc].beds){toast(`No recovery bed free in ${DEPT[p.loc].name}. Discharge someone or add a bed.`,'warn');return}
   p.tq=[];p.busy={k:'treat',d:p.loc,start:S.t,end:S.t+dur(c.tx[1],p.loc)};p.deadline=null;p.v++;dirty=true;
   log(`Treatment started for ${pname(p)}: ${c.tx[0]}.`);
 }
@@ -624,10 +636,20 @@ function transfer(p){
   log(`${pname(p)} transferred to another hospital${p.dx===p.c?` for ${c.n}`:''}.${amt?` Collected ${fmt$(amt)} for tests.`:''}`,'warn');
   toast(`${p.first} transferred${amt?` · +${fmt$(amt)}`:''}`,'warn');gone(p);
 }
-function finishTreat(p){
+function finishTreat(p,d){
   const c=cond(p);p.bill+=c.tx[2];const amt=Math.round(p.bill*p.cov);S.money+=amt;S.st.revenue+=amt;S.st.treated++;rep(2);
   log(`${pname(p)} treated for ${c.n}. Collected ${fmt$(amt)} (${p.ins}).`,'good');toast(`${p.first} treated · +${fmt$(amt)}`,'good');
   p.treated=true;p.busy=null;p.deadline=null;
+  if(c.los&&d&&S.depts[d]){removeFrom(p);p.loc=d;p.inW=false;p.tq=[];S.depts[d].adm.push(p.id);p.adm={d,start:S.t,until:S.t+c.los*DAY,days:c.los};p.v++;
+    log(`${pname(p)} admitted to a ${DEPT[d].name} recovery bed for ${c.los} day${c.los>1?'s':''}.`);dirty=true;return}
+  toPharmOrHome(p);
+}
+function dischargeAdm(p){
+  if(!p.adm||!p.adm.ready)return;const c=cond(p);const room=c.los*roomRate(p.adm.d);const amt=Math.round(room*p.cov);
+  S.money+=amt;S.st.revenue+=amt;log(`${pname(p)} discharged after ${c.los} day${c.los>1?'s':''}. Room charges ${fmt$(amt)}.`,'good');toast(`${p.first} discharged · +${fmt$(amt)} room charges`,'good');
+  p.adm=null;toPharmOrHome(p);
+}
+function toPharmOrHome(p){
   const P=S.depts.pharm;
   if(P.on&&space('pharm')){removeFrom(p);p.from=null;addTo(p,'pharm');p.phT=S.t;}
   else{log(`${pname(p)} went home with a paper prescription${P.on?' (pharmacy full)':''}.`);gone(p)}
@@ -656,7 +678,7 @@ function complete(p){
   if(b.k==='exam'){const e=EXAMS[b.x];const hits=[];c.F.forEach((f,i)=>{if(f.x===b.x){hits.push(f.l);if(!p.rev.includes(i))p.rev.push(i)}});
     p.res[b.x]=hits.length?hits:null;p.bill+=e.cost;
     if(S.pid!==p.id&&c.p==='r'&&hits.length)log(`${e.name} ready for ${pname(p)}.`);}
-  else if(b.k==='treat'){finishTreat(p)}
+  else if(b.k==='treat'){finishTreat(p,b.d)}
   else if(b.k==='stab'){p.stab++;p.bill+=400;if(p.deadline){p.deadline+=25;p.span+=25}log(`${pname(p)} stabilized: +25 minutes.`,'good')}
   else if(b.k==='autopsy'){p.autopsy=true;learn(c);S.money+=600;S.st.revenue+=600;log(`Autopsy: ${pname(p)} died of ${c.n}. +$600 county fee.`)}
 }
@@ -671,6 +693,7 @@ function step(dt){
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
     if(p.deadline&&S.t>=p.deadline&&!(p.busy&&p.busy.k==='treat')){if(cond(p).p==='r')die(p);else leave(p);continue}
+    if(p.adm&&!p.adm.ready&&S.t>=p.adm.until){p.adm.ready=true;p.v++;dirty=true;log(`${pname(p)} is ready for discharge from ${DEPT[p.adm.d].name}.`,'good')}
     if(p.loc==='pharm'&&S.t-p.phT>180){log(`${pname(p)} left the pharmacy line with a paper prescription.`);gone(p)}
   }
   Object.values(S.P).filter(p=>p.tq&&p.tq.length&&!p.busy).sort((a,b)=>'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||a.arr-b.arr).forEach(tryNext);
@@ -688,7 +711,7 @@ function renderSide(){
   let h=`<div><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec));
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
-  on.forEach(d=>{const D=S.depts[d.id];const n=d.kind==='path'?S.morgue.length:D.q.length+D.w.length;h+=item(d.id,d.code,d.name,n,d.hue,redIn([...D.q,...D.w]))});
+  on.forEach(d=>{const D=S.depts[d.id];const n=d.kind==='path'?S.morgue.length:D.q.length+D.w.length+(D.adm||[]).length;h+=item(d.id,d.code,d.name,n,d.hue,redIn([...D.q,...D.w]))});
   h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
@@ -703,7 +726,7 @@ function renderSide(){
    <li>Send them to an open department. The ER can run basic exams, ECG and quick swabs.</li>
    <li>Run tests to uncover findings. Imaging lives in Radiology, blood work in the Lab: send them there, then back.</li>
    <li>Pick the diagnosis. A wrong guess sends the patient home without paying.</li>
-   <li>Treat in a department that handles that condition, or transfer them out.</li>
+   <li>Treat in a department that handles that condition, or transfer them out. Bigger cases then need a recovery bed; discharge them when their stay ends.</li>
    <li>With a Pharmacy open, treated patients come to you for meds. Pick what a real doctor would prescribe.</li>
    <li>Every confirmed diagnosis, misdiagnosis or autopsy adds the full case to your Casebook.</li>
   </ol></details>`;
@@ -714,18 +737,19 @@ function card(p){
   const c=cond(p);let st='Waiting',cls='';
   if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treating':p.busy.k==='stab'?'Stabilizing':'Autopsy';st=`${lbl} · <span class="mono" data-bzt="${p.id}"></span>`;cls='busy'}
   else if(p.loc==='morgue')st=p.autopsy?`Cause: ${esc(c.n)}`:'Awaiting autopsy';
+  else if(p.adm){st=p.adm.ready?'Ready for discharge':`Recovering · <span class="mono" data-admt="${p.id}"></span>`;cls=p.adm.ready?'dx':''}
   else if(p.treated)st='Waiting for medication';
   else if(p.inW)st='In waiting room';
   else if(p.dx===p.c){st=`Dx: ${esc(c.n)}`;cls='dx'}
   else if(p.loc==='rec')st='Needs triage';
   else{const n=Object.keys(p.res).length;st=n?`${n} test${n>1?'s':''} done`:'Ready for exam'}
   if(p.tq&&p.tq.length)st+=` · ${p.tq.length} queued`;
-  const showBar=p.busy||p.deadline;
+  const showBar=p.busy||p.deadline||(p.adm&&!p.adm.ready);
   return `<button class="pt ${S.pid===p.id?'sel':''}" data-act="pt" data-pid="${p.id}">
    <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span></span>
    <span class="meta">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span>
    <span class="status ${cls}">${st}</span>
-   ${showBar?`<span class="bar ${p.busy?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
+   ${showBar?`<span class="bar ${p.busy||p.adm?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
    ${p.deadline&&!p.busy?`<span class="timeline"><span>Leaves in</span><span data-dlt="${p.id}"></span></span>`:''}
   </button>`;
 }
@@ -776,6 +800,11 @@ function renderMain(){
       } else {
         h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Bed')}</section>
         <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a bed opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
+        if(d.kind==='clinic'){const nb=D.beds||0;
+          h+=`<section class="zone"><div class="zone-h"><h2>Recovery beds</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))}/day</span>
+            <span class="note">Patients who need a stay recover here after treatment. One hospital day is ${DAY} minutes.</span>
+            <button class="btn sm" data-act="addbed" data-d="${v}" ${nb>=BEDMAX||S.money<BED_COST?'disabled':''}>${nb>=BEDMAX?'Max beds':`Add bed · ${fmt$(BED_COST)}`}</button></div>
+            ${slots(D.adm,nb,'Recovery')}</section>`}
       }
     }
   }
@@ -792,7 +821,7 @@ function bookHTML(){
       cards+=`<article class="case"><div class="case-h"><span class="tri ${c.p}"></span><b class="pr-${c.p}">${esc(c.n)}</b><span class="mono seen">seen ${k}×</span></div>
         <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
         <dl><dt>Treated in</dt><dd>${esc(c.t.map(t=>DEPT[t].name).join(', '))}</dd>
-        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}</dd>
+        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}</dd><dt>Stay</dt><dd>${c.los?`${c.los} day${c.los>1?'s':''} admitted`:'Goes home same day'}</dd>
         <dt>Prescription</dt><dd>${esc(c.rx.map(r=>MEDS[r].name).join(', '))}</dd></dl></article>`});
     if(cards)h+=`<section class="zone"><div class="zone-h"><h2>${esc(d.name)}</h2></div><div class="cases">${cards}</div></section>`});
   setTimeout(()=>{const el=document.getElementById('bookCount');if(el)el.textContent=`${known} of ${CONDS.length} discovered`},0);
@@ -831,6 +860,14 @@ function chartHTML(p){
   }
 
   // findings
+  if(p.adm){const room=c.los*roomRate(p.adm.d);
+    h+=`<div class="sec"><div class="callout good"><b>${esc(c.n)}</b><br>Treated: ${esc(c.tx[0])}</div></div>
+    <div class="sec"><h3>Inpatient stay <span>${c.los} day${c.los>1?'s':''} · ${DAY} min each</span></h3>
+     ${p.adm.ready?`<div class="callout good">Recovery complete. Discharge to free the bed and collect room charges.</div>`
+      :`<div class="busybox"><b>Recovering in ${esc(DEPT[p.adm.d].name)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-admt="${p.id}"></span></div>`}
+     <div class="bill"><span>Room charges on discharge</span><b>${fmt$(room)} → you collect ${fmt$(room*p.cov)}</b></div>
+     <div><button class="btn primary" data-act="discharge" ${p.adm.ready?'':'disabled'}>Discharge</button></div></div>`;
+    return h}
   const tot=c.F.length,got=p.rev.length;
   h+=`<div class="sec"><h3>Findings <span>${got} of ${tot} uncovered</span></h3>
    <div class="cert"><span class="bar"><i style="width:${Math.round(got/tot*100)}%"></i></span><span class="mono">${Math.round(got/tot*100)}%</span></div>
@@ -844,7 +881,7 @@ function chartHTML(p){
 
   if(p.dx===p.c){
     const here=c.t.includes(L);
-    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}${c.los?`<br>Then a ${c.los}-day recovery stay (${c.los*DAY} min)`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
      ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Start treatment</button>${!canWork(L)&&!p.busy?`<span class="empty-note">All ${leadRole(L)[0].toLowerCase()} are busy.</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
@@ -900,9 +937,11 @@ function tickUI(){
   document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':`${Math.max(0,Math.ceil(S.next-S.t))} min`;
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
+    else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
     else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
     el.textContent=el.classList.contains('tag')?`${cond(p).p==='r'?'Critical in':'Leaves in'} ${r} min`:`${r} min`;el.classList.toggle('urgent',r<=10)});
+  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;const day=Math.min(p.adm.days,Math.floor((S.t-p.adm.start)/DAY)+1);el.textContent=`Day ${day} of ${p.adm.days} · ${Math.max(0,Math.ceil(p.adm.until-S.t))} min left`});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${Math.max(0,Math.ceil(p.busy.end-S.t))} min left`});
 }
 function render(){
@@ -919,6 +958,8 @@ document.addEventListener('click',e=>{
     case 'view':S.view=b.dataset.v;break;
     case 'pt':S.pid=b.dataset.pid;break;
     case 'close':S.pid=null;break;
+    case 'addbed':{const d=b.dataset.d,D=S.depts[d];if(S.money<BED_COST||D.beds>=BEDMAX)return;S.money-=BED_COST;D.beds++;toast(`Recovery bed added to ${DEPT[d].name}.`);break}
+    case 'discharge':p&&dischargeAdm(p);break;
     case 'pause':S.speed=S.speed?0:1;break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'treat':p&&startTreat(p);break;
@@ -955,7 +996,7 @@ function loop(){
 function start(data){
   S=(data&&data.state)||load();
   if(S)S.speed=S.speed?1:0;
-  if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]}});
+  if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
   render();setInterval(loop,200);
 }
 window.claude?.hot?.snapshot?.(()=>({state:S}));
