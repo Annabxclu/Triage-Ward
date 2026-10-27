@@ -931,8 +931,8 @@ function renderMain(){
       if(d.kind==='path'){
         h+=`<section class="zone"><div class="zone-h"><h2>Morgue</h2><span class="cap">${S.morgue.length}/${QMAX}</span><span class="note">Urgent patients who run out of time end up here.</span></div>${slots(S.morgue,QMAX,'Drawer')}</section>`;
       } else {
-        h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Bed')}</section>
-        <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a bed opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
+        h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Seat')}</section>
+        <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a seat in the queue opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
         if(d.kind==='clinic')h+=recoveryZone(v);
       }
     }
@@ -1023,7 +1023,7 @@ function chartHTML(p){
     const here=EXAM_ORDER.filter(x=>examHere(x,L)&&erExamOK(p,x));
     const nq=(p.tq||[]).length;const who=L==='er'?(p.stage==='tri'?'nurse':'doctor'):'';
     h+=`<div class="sec"><h3>${L==='er'?(p.stage==='tri'?'Nurse tests':'Doctor tests'):'Run a test here'} <span>${L==='er'?(nq?`${nq}/${TQMAX} queued`:canRun(p)?'tap to run or queue':`assign a ${who} · tap to queue`):!S.depts[L].lead?'no staff':nq?`${nq}/${TQMAX} queued`:canWork(L)?'tap to run or queue':'staff busy · tap to queue'}</span></h3>
-     ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a bed opens.</div>':''}
+     ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a seat in the queue opens.</div>':''}
      <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
       const qi=(p.tq||[]).indexOf(x);const run=!!(p.busy&&p.busy.k==='exam'&&p.busy.x===x);
       return `<button class="exam ${dn?'done':''} ${qi>=0?'queued':''} ${run?'running':''}" data-act="exam" data-x="${x}" ${dn||run||(qi<0&&nq>=TQMAX)?'disabled':''} ${qi>=0?'aria-pressed="true"':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${run?'Running now':qi>=0?`Queued #${qi+1} · tap to remove`:`${fmtDur(dur(e.min,L))} · ${fmt$(e.cost)}`}</span></button>`}).join('')}</div></div>`;
