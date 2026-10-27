@@ -206,6 +206,10 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .exam .en{font-weight:700;font-size:13px;line-height:1.2}
 .exam .ec{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .exam.done{opacity:.55}
+.exam.queued{border-color:var(--accent);background:var(--accent-soft)}
+.exam.queued .ec{color:var(--accent)}
+.exam.running,.exam.running:disabled{border-color:var(--accent);opacity:1;cursor:default}
+.exam.running .ec{color:var(--accent);font-weight:600}
 .elsewhere{display:grid;gap:4px;font-size:12px;color:var(--muted)}
 .elsewhere b{color:var(--ink)}
 .act{display:grid;gap:6px}
@@ -335,7 +339,7 @@ const DEPTS = [
 const DEPT = Object.fromEntries(DEPTS.map(d=>[d.id,d]));
 const ROLE = {clinic:['Doctors',1400],lab:['Lab techs',600],rad:['Radiologists',1200],pharm:['Pharmacists',900],path:['Pathologists',1000]};
 function leadRole(d){return ROLE[d==='lab'?'lab':d==='rad'?'rad':DEPT[d].kind==='pharm'?'pharm':DEPT[d].kind==='path'?'path':'clinic']}
-const NURSE_PAY = 450;
+const NURSE_PAY = 450, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
 const PAT = {r:30, y:150, g:300};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
@@ -581,12 +585,21 @@ function examHere(x,d){const e=EXAMS[x];if(!d||!DEPT[d])return false;return e.de
 
 /* ---------- actions ---------- */
 function startExam(p,x){
-  const e=EXAMS[x];if(p.busy||p.inW||p.res[x]||!examHere(x,p.loc)||!canWork(p.loc))return;
+  const e=EXAMS[x];if(p.busy||p.inW||(x in p.res)||!examHere(x,p.loc)||!canWork(p.loc))return;
   p.busy={k:'exam',x,d:p.loc,start:S.t,end:S.t+dur(e.min,p.loc)};p.v++;dirty=true;
+}
+function queueExam(p,x){
+  if((x in p.res)||!examHere(x,p.loc)||(p.busy&&p.busy.k==='exam'&&p.busy.x===x))return;
+  p.tq=p.tq||[];const i=p.tq.indexOf(x);if(i>=0)p.tq.splice(i,1);else{if(p.tq.length>=TQMAX){toast(`Up to ${TQMAX} tests can be queued at a time.`);return}p.tq.push(x)}p.v++;dirty=true;tryNext(p);
+}
+function tryNext(p){
+  if(!p.tq||!p.tq.length||p.busy||p.inW||!DEPT[p.loc])return;
+  p.tq=p.tq.filter(x=>examHere(x,p.loc)&&!(x in p.res));if(!p.tq.length||!canWork(p.loc))return;
+  startExam(p,p.tq.shift());
 }
 function startTreat(p){
   const c=cond(p);if(p.dx!==p.c||p.busy||p.inW||!c.t.includes(p.loc)||!canWork(p.loc))return;
-  p.busy={k:'treat',d:p.loc,start:S.t,end:S.t+dur(c.tx[1],p.loc)};p.deadline=null;p.v++;dirty=true;
+  p.tq=[];p.busy={k:'treat',d:p.loc,start:S.t,end:S.t+dur(c.tx[1],p.loc)};p.deadline=null;p.v++;dirty=true;
   log(`Treatment started for ${pname(p)}: ${c.tx[0]}.`);
 }
 function startStab(p){
@@ -605,7 +618,7 @@ function diagnose(p,ci){
 }
 function sendTo(p,d){
   if(p.busy||!S.depts[d]||!S.depts[d].on||p.loc===d||!space(d))return;
-  const from=p.loc;removeFrom(p);p.from=from==='rec'?null:from;addTo(p,d);dirty=true;
+  p.tq=[];const from=p.loc;removeFrom(p);p.from=from==='rec'?null:from;addTo(p,d);dirty=true;
   if(S.pid===p.id&&from==='rec'){}/* keep chart open */
 }
 function transfer(p){
@@ -663,6 +676,7 @@ function step(dt){
     if(p.deadline&&S.t>=p.deadline&&!(p.busy&&p.busy.k==='treat')){if(cond(p).p==='r')die(p);else leave(p);continue}
     if(p.loc==='pharm'&&S.t-p.phT>180){log(`${pname(p)} left the pharmacy line with a paper prescription.`);gone(p)}
   }
+  Object.values(S.P).filter(p=>p.tq&&p.tq.length&&!p.busy).sort((a,b)=>'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||a.arr-b.arr).forEach(tryNext);
 }
 
 /* ================= RENDER ================= */
@@ -708,6 +722,7 @@ function card(p){
   else if(p.dx===p.c){st=`Dx: ${esc(c.n)}`;cls='dx'}
   else if(p.loc==='rec')st='Needs triage';
   else{const n=Object.keys(p.res).length;st=n?`${n} test${n>1?'s':''} done`:'Ready for exam'}
+  if(p.tq&&p.tq.length)st+=` · ${p.tq.length} queued`;
   const showBar=p.busy||p.deadline;
   return `<button class="pt ${S.pid===p.id?'sel':''}" data-act="pt" data-pid="${p.id}">
    <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span></span>
@@ -839,10 +854,11 @@ function chartHTML(p){
   // exams here
   if(L!=='rec'&&dk!=='pharm'){
     const here=EXAM_ORDER.filter(x=>examHere(x,L));
-    h+=`<div class="sec"><h3>Run a test here <span>${canWork(L)?'':S.depts[L].lead?'staff busy':'no staff'}</span></h3>
+    const nq=(p.tq||[]).length;h+=`<div class="sec"><h3>Run a test here <span>${!S.depts[L].lead?'no staff':nq?`${nq}/${TQMAX} queued`:canWork(L)?'tap to run or queue':'staff busy · tap to queue'}</span></h3>
      ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a bed opens.</div>':''}
      <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
-      return `<button class="exam ${dn?'done':''}" data-act="exam" data-x="${x}" ${dn||p.busy||p.inW||!canWork(L)?'disabled':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${dur(e.min,L)} min · ${fmt$(e.cost)}</span></button>`}).join('')}</div></div>`;
+      const qi=(p.tq||[]).indexOf(x);const run=!!(p.busy&&p.busy.k==='exam'&&p.busy.x===x);
+      return `<button class="exam ${dn?'done':''} ${qi>=0?'queued':''} ${run?'running':''}" data-act="exam" data-x="${x}" ${dn||run||(qi<0&&nq>=TQMAX)?'disabled':''} ${qi>=0?'aria-pressed="true"':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${run?'Running now':qi>=0?`Queued #${qi+1} · tap to remove`:`${dur(e.min,L)} min · ${fmt$(e.cost)}`}</span></button>`}).join('')}</div></div>`;
   }
 
   // actions
@@ -863,7 +879,7 @@ function chartHTML(p){
   return h;
 }
 function busyBox(p){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?cond(p).tx[0]:p.busy.k==='stab'?'Stabilizing: IV fluids, oxygen, monitoring':'Autopsy';
-  return `<div class="sec"><div class="busybox"><b>${esc(lbl)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-bzt="${p.id}"></span></div></div>`}
+  return `<div class="sec"><div class="busybox"><b>${esc(lbl)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-bzt="${p.id}"></span>${p.tq&&p.tq.length?`<span class="empty-note">Up next: ${esc(p.tq.map(x=>EXAMS[x].name).join(', '))}</span>`:''}</div></div>`}
 
 function renderChart(){
   const el=document.getElementById('chart');const p=S.pid&&S.P[S.pid];
@@ -908,7 +924,7 @@ document.addEventListener('click',e=>{
     case 'pt':S.pid=b.dataset.pid;break;
     case 'close':S.pid=null;break;
     case 'speed':S.speed=+b.dataset.s;break;
-    case 'exam':p&&startExam(p,b.dataset.x);break;
+    case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'treat':p&&startTreat(p);break;
     case 'stab':p&&startStab(p);break;
     case 'autopsy':p&&startAutopsy(p);break;
