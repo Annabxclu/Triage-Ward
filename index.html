@@ -518,7 +518,7 @@ const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart at
  "Subarachnoid hemorrhage":5,"New-onset epilepsy":1,"Pulmonary embolism":2,"Stevens-Johnson syndrome":4};
 for(const k in LOS)if(!CONDS.some(c=>c.n===k))console.warn('LOS name not found',k);
 CONDS.forEach(c=>c.los=LOS[c.n]||0);
-const DAY = 10, BED_COST = 3000, BEDMAX = 10, START_BEDS = 2;
+const DAY = 30, /* recovery minutes per real-life day of stay */ BED_COST = 3000, BEDMAX = 10, START_BEDS = 2;
 const roomRate = d=>d==='icu'?4000:1500;
 const FIRST_F = ["Maya","Grace","Lucia","Amara","Hannah","Nora","Priya","Elena","Tasha","Ruth","Mei","Sofia","Zoe","Imani","Leah","Rosa","Ivy","Dana","June","Keisha","Ana","Hazel","Noor","Esther"];
 const FIRST_M = ["Marcus","Daniel","Owen","Rafael","Kwame","Theo","Samuel","Luis","Arjun","Victor","Jamal","Henry","Elijah","Tomás","Ray","Felix","Gus","Andre","Malik","Walter","Isaac","Diego","Kenji","Omar"];
@@ -641,12 +641,12 @@ function finishTreat(p,d){
   log(`${pname(p)} treated for ${c.n}. Collected ${fmt$(amt)} (${p.ins}).`,'good');toast(`${p.first} treated · +${fmt$(amt)}`,'good');
   p.treated=true;p.busy=null;p.deadline=null;
   if(c.los&&d&&S.depts[d]){removeFrom(p);p.loc=d;p.inW=false;p.tq=[];S.depts[d].adm.push(p.id);p.adm={d,start:S.t,until:S.t+c.los*DAY,days:c.los};p.v++;
-    log(`${pname(p)} admitted to a ${DEPT[d].name} recovery bed for ${c.los} day${c.los>1?'s':''}.`);dirty=true;return}
+    log(`${pname(p)} admitted to a ${DEPT[d].name} recovery bed for ${c.los*DAY} minutes.`);dirty=true;return}
   toPharmOrHome(p);
 }
 function dischargeAdm(p){
   if(!p.adm||!p.adm.ready)return;const c=cond(p);const room=c.los*roomRate(p.adm.d);const amt=Math.round(room*p.cov);
-  S.money+=amt;S.st.revenue+=amt;log(`${pname(p)} discharged after ${c.los} day${c.los>1?'s':''}. Room charges ${fmt$(amt)}.`,'good');toast(`${p.first} discharged · +${fmt$(amt)} room charges`,'good');
+  S.money+=amt;S.st.revenue+=amt;log(`${pname(p)} discharged. Room charges ${fmt$(amt)}.`,'good');toast(`${p.first} discharged · +${fmt$(amt)} room charges`,'good');
   p.adm=null;toPharmOrHome(p);
 }
 function toPharmOrHome(p){
@@ -801,8 +801,8 @@ function renderMain(){
         h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Bed')}</section>
         <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a bed opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
         if(d.kind==='clinic'){const nb=D.beds||0;
-          h+=`<section class="zone"><div class="zone-h"><h2>Recovery beds</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))}/day</span>
-            <span class="note">Patients who need a stay recover here after treatment. One hospital day is ${DAY} minutes.</span>
+          h+=`<section class="zone"><div class="zone-h"><h2>Recovery beds</h2><span class="cap">${D.adm.length}/${nb} · ${fmt$(roomRate(v))} per ${DAY} min</span>
+            <span class="note">Bigger cases recover here after treatment, then you discharge them.</span>
             <button class="btn sm" data-act="addbed" data-d="${v}" ${nb>=BEDMAX||S.money<BED_COST?'disabled':''}>${nb>=BEDMAX?'Max beds':`Add bed · ${fmt$(BED_COST)}`}</button></div>
             ${slots(D.adm,nb,'Recovery')}</section>`}
       }
@@ -821,7 +821,7 @@ function bookHTML(){
       cards+=`<article class="case"><div class="case-h"><span class="tri ${c.p}"></span><b class="pr-${c.p}">${esc(c.n)}</b><span class="mono seen">seen ${k}×</span></div>
         <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
         <dl><dt>Treated in</dt><dd>${esc(c.t.map(t=>DEPT[t].name).join(', '))}</dd>
-        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}</dd><dt>Stay</dt><dd>${c.los?`${c.los} day${c.los>1?'s':''} admitted`:'Goes home same day'}</dd>
+        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}</dd><dt>Recovery</dt><dd>${c.los?`${c.los*DAY} min in a recovery bed (real-life stay about ${c.los} day${c.los>1?'s':''})`:'Goes home after treatment'}</dd>
         <dt>Prescription</dt><dd>${esc(c.rx.map(r=>MEDS[r].name).join(', '))}</dd></dl></article>`});
     if(cards)h+=`<section class="zone"><div class="zone-h"><h2>${esc(d.name)}</h2></div><div class="cases">${cards}</div></section>`});
   setTimeout(()=>{const el=document.getElementById('bookCount');if(el)el.textContent=`${known} of ${CONDS.length} discovered`},0);
@@ -862,7 +862,7 @@ function chartHTML(p){
   // findings
   if(p.adm){const room=c.los*roomRate(p.adm.d);
     h+=`<div class="sec"><div class="callout good"><b>${esc(c.n)}</b><br>Treated: ${esc(c.tx[0])}</div></div>
-    <div class="sec"><h3>Inpatient stay <span>${c.los} day${c.los>1?'s':''} · ${DAY} min each</span></h3>
+    <div class="sec"><h3>Recovery stay <span>${c.los*DAY} min</span></h3>
      ${p.adm.ready?`<div class="callout good">Recovery complete. Discharge to free the bed and collect room charges.</div>`
       :`<div class="busybox"><b>Recovering in ${esc(DEPT[p.adm.d].name)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-admt="${p.id}"></span></div>`}
      <div class="bill"><span>Room charges on discharge</span><b>${fmt$(room)} → you collect ${fmt$(room*p.cov)}</b></div>
@@ -881,7 +881,7 @@ function chartHTML(p){
 
   if(p.dx===p.c){
     const here=c.t.includes(L);
-    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}${c.los?`<br>Then a ${c.los}-day recovery stay (${c.los*DAY} min)`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}${c.los?`<br>Then ${c.los*DAY} min in a recovery bed`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
      ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Start treatment</button>${!canWork(L)&&!p.busy?`<span class="empty-note">All ${leadRole(L)[0].toLowerCase()} are busy.</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
@@ -941,7 +941,7 @@ function tickUI(){
     else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
     el.textContent=el.classList.contains('tag')?`${cond(p).p==='r'?'Critical in':'Leaves in'} ${r} min`:`${r} min`;el.classList.toggle('urgent',r<=10)});
-  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;const day=Math.min(p.adm.days,Math.floor((S.t-p.adm.start)/DAY)+1);el.textContent=`Day ${day} of ${p.adm.days} · ${Math.max(0,Math.ceil(p.adm.until-S.t))} min left`});
+  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${Math.max(0,Math.ceil(p.adm.until-S.t))} min left`});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${Math.max(0,Math.ceil(p.busy.end-S.t))} min left`});
 }
 function render(){
