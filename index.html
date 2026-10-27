@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Triage Ward</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: hospital wayfinding — dark signage band on top, department directory left, ward floor center, patient chart clipped to the right */
+:root{
+  --bg:#edf1f0; --panel:#fbfcfc; --panel2:#e2e9e8; --ink:#13232a; --muted:#56686e; --line:#cdd8d7;
+  --accent:#0b7a72; --accent-ink:#ffffff; --accent-soft:#d7ecea;
+  --band:#13232a; --band-ink:#eaf3f2; --band-muted:#91a9aa; --band-line:#2a3d44;
+  --red:#c0262d; --red-bg:#fbe8e8; --amber:#985a00; --amber-bg:#fcf0da; --green:#2b7838; --green-bg:#e5f2e7;
+  --shadow:0 10px 30px rgba(19,35,42,.18);
+  --f-sign:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1417; --panel:#142025; --panel2:#1b2a30; --ink:#e2ecec; --muted:#8fa3a7; --line:#26383e;
+  --accent:#3dc0b3; --accent-ink:#06211e; --accent-soft:#163a38;
+  --band:#081013; --band-ink:#e2ecec; --band-muted:#7f9599; --band-line:#1f3036;
+  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b;
+  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1417; --panel:#142025; --panel2:#1b2a30; --ink:#e2ecec; --muted:#8fa3a7; --line:#26383e;
+  --accent:#3dc0b3; --accent-ink:#06211e; --accent-soft:#163a38;
+  --band:#081013; --band-ink:#e2ecec; --band-muted:#7f9599; --band-line:#1f3036;
+  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b;
+  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.sign{font-family:var(--f-sign);text-transform:uppercase;letter-spacing:.04em}
+h1,h2,h3{text-wrap:balance;margin:0}
+
+/* setup */
+#setup{min-height:100%;display:grid;place-items:center;padding-block:40px;padding-left:16px;padding-right:16px}
+.setup-card{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.setup-band{background:var(--band);color:var(--band-ink);padding:22px 24px 18px}
+.setup-band .eyebrow{color:var(--band-muted);font-family:var(--f-sign);letter-spacing:.14em;text-transform:uppercase;font-size:13px}
+.setup-band h1{font-family:var(--f-sign);font-weight:700;font-size:44px;line-height:1;text-transform:uppercase;letter-spacing:.02em;margin-top:6px}
+.setup-band .arrow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.setup-band .arrow span{font-family:var(--f-sign);font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border:1px solid var(--band-line);border-radius:3px;color:var(--band-muted)}
+.setup-band .arrow span.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.setup-body{padding:22px 24px 24px;display:grid;gap:16px}
+.setup-body label{font-weight:700;display:block;margin-bottom:6px}
+.setup-body input{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:18px}
+.setup-body ul{margin:0;padding-left:18px;color:var(--muted);display:grid;gap:4px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,var(--line))}
+.btn.big{padding:12px 18px;font-size:16px}
+.btn.sm{padding:4px 9px;font-size:13px}
+
+/* app */
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.top{background:var(--band);color:var(--band-ink);display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top .hname{font-family:var(--f-sign);font-weight:700;font-size:26px;text-transform:uppercase;letter-spacing:.03em;line-height:1;display:flex;align-items:center;gap:10px;min-width:0}
+.top .hname .cross{width:22px;height:22px;flex:none;background:var(--accent);clip-path:polygon(35% 0,65% 0,65% 35%,100% 35%,100% 65%,65% 65%,65% 100%,35% 100%,35% 65%,0 65%,0 35%,35% 35%)}
+.top .hname span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meters{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center;margin-left:auto}
+.meter{display:flex;flex-direction:column;line-height:1.1}
+.meter small{color:var(--band-muted);font-family:var(--f-sign);letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+.meter b{font-family:var(--f-mono);font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}
+.meter b.neg{color:var(--red)}
+.speed{display:flex;border:1px solid var(--band-line);border-radius:6px;overflow:hidden}
+.speed button{background:transparent;border:0;color:var(--band-muted);padding:6px 10px;font-family:var(--f-mono);font-size:13px}
+.speed button.on{background:var(--accent);color:var(--accent-ink)}
+.top .menu{background:transparent;border:1px solid var(--band-line);color:var(--band-muted);border-radius:6px;padding:6px 10px;font-size:13px}
+
+.body{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:0}
+.body.has-chart{grid-template-columns:250px minmax(0,1fr) 410px}
+.side{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding-block:14px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:12px;display:flex;flex-direction:column;gap:14px}
+.side h3{font-family:var(--f-sign);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 6px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.navi{display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;text-align:left;padding:6px;border-radius:6px}
+.navi:hover{background:var(--panel2)}
+.navi.on{background:var(--accent-soft)}
+.badge{flex:none;width:38px;height:24px;border-radius:3px;display:grid;place-items:center;font-family:var(--f-sign);font-weight:700;font-size:12px;letter-spacing:.06em;color:#fff;background:hsl(var(--h) 42% 36%)}
+.navi.locked .badge{background:var(--panel2);color:var(--muted)}
+.navi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navi .ct{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.navi .redct{font-family:var(--f-mono);font-size:11px;color:var(--red);font-weight:600}
+.navi.locked .nm{color:var(--muted)}
+.unlock{border:1px solid var(--line);background:var(--panel);border-radius:4px;font-family:var(--f-mono);font-size:11px;padding:2px 6px}
+.unlock:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.unlock:disabled{opacity:.5;cursor:not-allowed}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 6px}
+.stats div{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.stats b{font-family:var(--f-mono);color:var(--ink)}
+details.help{padding:0 6px;font-size:13px;color:var(--muted)}
+details.help summary{cursor:pointer;color:var(--ink);font-weight:700}
+details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
+
+.main{overflow:auto;padding-block:18px 28px;padding-left:20px;padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px;min-width:0}
+.dhead{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between}
+.dtitle{display:flex;align-items:center;gap:12px;min-width:0}
+.dtitle .badge{width:54px;height:36px;font-size:16px}
+.dtitle h1{font-family:var(--f-sign);font-weight:700;font-size:32px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.dtitle p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.staffrow{display:flex;flex-wrap:wrap;gap:10px}
+.staff{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 8px}
+.staff .role{font-weight:700;font-size:13px}
+.staff .sal{color:var(--muted);font-size:12px;font-family:var(--f-mono)}
+.staff b{font-family:var(--f-mono);min-width:1.4em;text-align:center}
+.staff button{width:26px;height:26px;border-radius:4px;border:1px solid var(--line);background:var(--bg);font-weight:700;line-height:1;padding:0}
+.staff button:hover:not(:disabled){border-color:var(--accent)}
+.staff button:disabled{opacity:.4}
+.tests{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.tests span.chip{border:1px solid var(--line);border-radius:3px;padding:1px 7px;background:var(--panel)}
+.zone{display:flex;flex-direction:column;gap:8px}
+.zone-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.zone-h h2{font-family:var(--f-sign);font-size:15px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.zone-h .cap{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.zone-h .note{font-size:12px;color:var(--muted)}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.slot-empty{border:1px dashed var(--line);border-radius:6px;min-height:86px;display:grid;place-items:center;color:var(--muted);font-family:var(--f-mono);font-size:12px;opacity:.7}
+.pt{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:9px 10px 8px;min-height:86px;min-width:0}
+.pt:hover{border-color:var(--muted)}
+.pt.sel{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.pt .row1{display:flex;align-items:center;gap:6px;min-width:0}
+.tri{flex:none;width:9px;height:9px;border-radius:50%}
+.tri.r{background:var(--red)} .tri.y{background:var(--amber)} .tri.g{background:var(--green)}
+.pname{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.pr-r{color:var(--red)} .pr-y{color:var(--amber)} .pr-g{color:var(--green)}
+.pt .meta{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt .status{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt .status.busy{color:var(--accent);font-weight:700}
+.pt .status.dx{color:var(--green);font-weight:700}
+.bar{height:4px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:auto}
+.bar i{display:block;height:100%;background:var(--muted);width:100%}
+.bar.r i{background:var(--red)} .bar.y i{background:var(--amber)} .bar.g i{background:var(--green)}
+.bar.busy i{background:var(--accent)}
+.timeline{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.timeline .urgent{color:var(--red);font-weight:600}
+.empty-note{color:var(--muted);font-size:13px}
+.logbox{border-top:1px solid var(--line);padding-top:12px}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:3px;font-size:13px}
+.log li{display:flex;gap:10px}
+.log time{font-family:var(--f-mono);font-size:12px;color:var(--muted);flex:none}
+.log .bad{color:var(--red)} .log .good{color:var(--green)} .log .warn{color:var(--amber)}
+.bookbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bookbar input{flex:1;min-width:0;max-width:480px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.case{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px 14px;display:grid;gap:8px;align-content:start;min-width:0}
+.case.unk{border-style:dashed;background:transparent}
+.case-h{display:flex;align-items:center;gap:8px}
+.case-h .seen{margin-left:auto;font-size:11px;color:var(--muted)}
+.case dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px;border-top:1px solid var(--line);padding-top:8px}
+.case dt{color:var(--muted);font-weight:700}
+.case dd{margin:0}
+.locked-view{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:22px;display:grid;gap:12px;max-width:640px}
+
+/* chart */
+.chart{background:var(--panel);border-left:1px solid var(--line);overflow:auto;min-height:0;padding-block:0 28px;padding-right:max(0px,env(safe-area-inset-right,0px))}
+.ch-head{position:sticky;top:0;z-index:2;background:var(--panel);border-bottom:1px solid var(--line);padding:14px 18px 12px;display:grid;gap:8px}
+.ch-head .clip{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.ch-head h2{font-size:21px;line-height:1.15}
+.ch-head .sub{color:var(--muted);font-size:13px}
+.xbtn{border:1px solid var(--line);background:var(--bg);border-radius:6px;width:32px;height:32px;flex:none;font-size:18px;line-height:1}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:12px;border-radius:3px;padding:2px 8px;border:1px solid var(--line);font-weight:700}
+.tag.r{background:var(--red-bg);color:var(--red);border-color:transparent}
+.tag.y{background:var(--amber-bg);color:var(--amber);border-color:transparent}
+.tag.g{background:var(--green-bg);color:var(--green);border-color:transparent}
+.tag.mono{font-weight:500}
+.sec{padding:14px 18px 0;display:grid;gap:8px}
+.sec h3{font-family:var(--f-sign);font-size:13px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.sec h3 span{font-family:var(--f-mono);letter-spacing:0;text-transform:none}
+.findings{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.findings li{display:flex;gap:8px;align-items:baseline}
+.findings li::before{content:"";flex:none;width:6px;height:6px;border-radius:1px;background:var(--accent);transform:translateY(-2px)}
+.findings li .src{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.findings li.hid{color:var(--muted)}
+.findings li.hid::before{background:transparent;border:1px solid var(--muted)}
+.cert{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.cert .bar{flex:1;height:6px;margin:0}
+.cert .bar i{background:var(--accent)}
+.results{display:grid;gap:6px}
+.res{border-left:2px solid var(--line);padding-left:10px;font-size:13px}
+.res b{display:block;font-size:12px;color:var(--muted);font-weight:700}
+.res.pos{border-color:var(--accent)}
+.examgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.exam{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 9px;gap:1px;min-width:0}
+.exam:hover:not(:disabled){border-color:var(--accent)}
+.exam:disabled{opacity:.45;cursor:not-allowed}
+.exam .en{font-weight:700;font-size:13px;line-height:1.2}
+.exam .ec{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.exam.done{opacity:.55}
+.elsewhere{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.elsewhere b{color:var(--ink)}
+.act{display:grid;gap:6px}
+.act label{font-size:12px;font-weight:700;color:var(--muted)}
+.act .line{display:flex;gap:6px}
+.act select{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.callout{border-radius:6px;padding:10px 12px;font-size:13px;background:var(--panel2)}
+.callout.good{background:var(--green-bg);color:var(--ink)}
+.callout.good b{color:var(--green)}
+.callout.warn{background:var(--amber-bg)}
+.busybox{border:1px solid var(--accent);border-radius:6px;padding:10px 12px;display:grid;gap:6px;font-size:13px}
+.busybox .bar{height:6px}
+.meds{display:grid;gap:4px;max-height:none}
+.med{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--bg);font-size:13px;cursor:pointer}
+.med input{accent-color:var(--accent)}
+.med .mn{flex:1;min-width:0}
+.med .mt{font-size:10px;font-weight:700;letter-spacing:.06em;border-radius:3px;padding:1px 5px;border:1px solid var(--line);color:var(--muted)}
+.med .mp{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.medgroup{font-size:12px;font-weight:700;color:var(--muted);margin-top:4px}
+.bill{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.bill b{font-family:var(--f-mono);color:var(--ink)}
+
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));display:grid;gap:6px;z-index:50;width:min(460px,calc(100% - 32px));pointer-events:none}
+.toast{background:var(--band);color:var(--band-ink);border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:var(--shadow);border-left:4px solid var(--accent);animation:tin .2s ease-out}
+.toast.bad{border-left-color:var(--red)} .toast.warn{border-left-color:var(--amber)} .toast.good{border-left-color:var(--green)}
+@keyframes tin{from{transform:translateY(8px);opacity:.3}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+
+@media (max-width:1150px){
+  .body.has-chart{grid-template-columns:250px minmax(0,1fr)}
+  .chart{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);z-index:30;box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px)}
+  .ch-head{top:0}
+}
+@media (max-width:760px){
+  html,body{height:auto}
+  .app{height:auto;display:block}
+  .body,.body.has-chart{display:block}
+  .side{border-right:0;border-bottom:1px solid var(--line);overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .nav.open-list{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:4px}
+  .nav.open-list .navi{flex:none;width:auto;border:1px solid var(--line)}
+  .nav.open-list .navi .nm{max-width:120px}
+  .main{overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .chart{width:100%;padding-left:env(safe-area-inset-left,0px)}
+  .slots{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .examgrid{grid-template-columns:1fr}
+  .top .hname{font-size:21px;width:100%}
+  .meters{margin-left:0;gap:6px 16px}
+}
+</style>
+
+</head>
+<body>
+<div id="setup" hidden>
+  <div class="setup-card">
+    <div class="setup-band">
+      <div class="eyebrow">Hospital management · Day 1</div>
+      <h1>Name your hospital</h1>
+      <div class="arrow"><span class="on">ER — Open</span><span>Lab</span><span>Radiology</span><span>Cardiology</span><span>+18 wards</span></div>
+    </div>
+    <form class="setup-body" id="setupForm">
+      <div>
+        <label for="hospName">Hospital name</label>
+        <input id="hospName" maxlength="40" value="Mercy Ridge General" autocomplete="off">
+      </div>
+      <ul>
+        <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
+        <li>A patient reaches Reception every 5 minutes. Up to 10 can wait at check-in.</li>
+        <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
+        <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
+      </ul>
+      <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
+    </form>
+  </div>
+</div>
+
+<div class="app" id="app" hidden>
+  <header class="top">
+    <div class="hname"><span class="cross" aria-hidden="true"></span><span class="t" id="hn"></span></div>
+    <div class="meters">
+      <div class="meter"><small>Clock</small><b id="clock">—</b></div>
+      <div class="meter"><small>Funds</small><b id="money">—</b></div>
+      <div class="meter"><small>Reputation</small><b id="rep">—</b></div>
+      <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
+      <div class="speed" id="speed" role="group" aria-label="Game speed">
+        <button data-act="speed" data-s="0" title="Pause">II</button>
+        <button data-act="speed" data-s="1">1×</button>
+        <button data-act="speed" data-s="2">2×</button>
+        <button data-act="speed" data-s="4">4×</button>
+      </div>
+      <button class="menu" data-act="newgame" id="newBtn">New game</button>
+    </div>
+  </header>
+  <div class="body" id="bodyGrid">
+    <nav class="side" id="side"></nav>
+    <main class="main" id="main"></main>
+    <aside class="chart" id="chart" hidden></aside>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+/* ================= DATA ================= */
+const DEPTS = [
+ ['er','Emergency Room','ER',0,'clinic'],
+ ['lab','Laboratory','LAB',5000,'diag'],
+ ['rad','Radiology','RAD',9000,'diag'],
+ ['pharm','Pharmacy','RX',4000,'pharm'],
+ ['im','Internal Medicine','IM',10000,'clinic'],
+ ['cardio','Cardiology','CARD',18000,'clinic'],
+ ['ortho','Orthopedics','ORTH',12000,'clinic'],
+ ['neuro','Neurology','NEUR',18000,'clinic'],
+ ['gs','General Surgery','SURG',20000,'clinic'],
+ ['trauma','Traumatology & Burn Unit','TRMA',22000,'clinic'],
+ ['icu','Intensive Care Unit','ICU',25000,'clinic'],
+ ['id','Infectious Diseases','ID',12000,'clinic'],
+ ['psych','Psychiatry','PSY',8000,'clinic'],
+ ['onc','Oncology','ONC',24000,'clinic'],
+ ['ob','OB/GYN','OBG',15000,'clinic'],
+ ['plastic','Plastic Surgery','PLAS',16000,'clinic'],
+ ['sh','Sexual Health','SXH',6000,'clinic'],
+ ['neph','Nephrology','NEPH',14000,'clinic'],
+ ['ent','ENT','ENT',9000,'clinic'],
+ ['omfs','Oral & Maxillofacial','OMFS',9000,'clinic'],
+ ['derm','Dermatology','DERM',10000,'clinic'],
+ ['path','Pathology','PATH',6000,'path'],
+].map((d,i)=>({id:d[0],name:d[1],code:d[2],cost:d[3],kind:d[4],hue:Math.round((i*137.5+195)%360)}));
+const DEPT = Object.fromEntries(DEPTS.map(d=>[d.id,d]));
+const ROLE = {clinic:['Doctors',1400],lab:['Lab techs',600],rad:['Radiologists',1200],pharm:['Pharmacists',900],path:['Pathologists',1000]};
+function leadRole(d){return ROLE[d==='lab'?'lab':d==='rad'?'rad':DEPT[d].kind==='pharm'?'pharm':DEPT[d].kind==='path'?'path':'clinic']}
+const NURSE_PAY = 450;
+const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
+const PAT = {r:30, y:150, g:300};
+const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
+const MS_PER_MIN = 1500;
+
+const EXAMS = {};
+function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min,cost,depts,norm}}
+X('hx','Patient interview',3,50,'basic','Nothing further to report');
+X('phys','Physical exam',5,80,'basic','Unremarkable exam');
+X('vitals','Vital signs',2,30,'basic','Within normal limits');
+X('ausc','Auscultation (heart & lungs)',3,40,'basic','Normal heart and lung sounds');
+X('palp','Abdominal palpation',3,40,'basic','Soft, non-tender abdomen');
+X('spo2','Pulse oximetry',1,25,'basic','SpO₂ 98%');
+X('neuro','Neurological exam',6,120,['er','neuro','trauma','icu','im','ortho','psych'],'No focal deficits');
+X('nihss','NIH Stroke Scale',5,100,['er','neuro'],'Score 0');
+X('ecg','12-lead ECG',8,180,['er','cardio','icu','im','neph'],'Normal sinus rhythm');
+X('gluc','Bedside glucose',2,20,['er','icu','im','neuro'],'Glucose 104 mg/dL');
+X('ua','Urinalysis',10,40,['er','lab','neph','im','sh'],'Urine clear, no blood or infection');
+X('hcg','Pregnancy test (hCG)',10,45,['er','lab','ob','sh'],'Negative');
+X('strep','Rapid strep test',8,40,['er','ent','lab'],'Negative');
+X('flu','Flu / COVID swab',10,60,['er','id','lab'],'Negative');
+X('phq','PHQ-9 / GAD-7 screening',6,60,['psych','im','er'],'Scores in normal range');
+X('fast','FAST ultrasound',8,350,['er','trauma','icu','gs'],'No free fluid');
+X('wound','Wound assessment',5,90,['er','trauma','plastic'],'No wound');
+X('burn','Burn assessment (TBSA)',8,200,['trauma','plastic'],'No burns');
+X('oto','Otoscopy',3,50,['er','ent'],'Normal ear canal and eardrum');
+X('echo','Echocardiogram',25,900,['cardio'],'Normal heart function, EF 60%');
+X('stress','Exercise stress test',35,700,['cardio'],'No ischemia at peak exercise');
+X('rom','Range-of-motion & special tests',8,150,['ortho'],'Full, painless range of motion');
+X('cxr','Chest X-ray',10,250,['rad'],'Clear lungs, normal heart size');
+X('xr','Bone & joint X-ray',10,220,['rad'],'No fracture');
+X('pano','Panoramic dental X-ray',10,180,['rad','omfs'],'No abnormality');
+X('mammo','Mammogram',15,350,['rad'],'No suspicious mass');
+X('usabd','Abdominal ultrasound',15,450,['rad'],'Normal liver, gallbladder and kidneys');
+X('uspelvic','Pelvic ultrasound',15,450,['rad','ob'],'Normal uterus and ovaries');
+X('doppler','Venous Doppler ultrasound',15,400,['rad'],'Veins compress normally, no clot');
+X('cthead','CT head',20,1200,['rad'],'No bleed, mass or fracture');
+X('ctchest','CT chest',20,1300,['rad'],'No mass or enlarged lymph nodes');
+X('ctpa','CT pulmonary angiogram',25,1600,['rad'],'No pulmonary embolism');
+X('ctabd','CT abdomen & pelvis',25,1500,['rad'],'No acute abnormality');
+X('mribrain','MRI brain',45,2400,['rad'],'Normal brain MRI');
+X('mrispine','MRI spine',45,2200,['rad'],'No disc herniation');
+X('mrijoint','MRI joint',40,2000,['rad'],'Ligaments and cartilage intact');
+X('cbc','Complete blood count',15,60,['lab'],'Normal blood counts');
+X('bmp','Metabolic panel',20,80,['lab','icu'],'Normal electrolytes and kidney function');
+X('trop','Troponin',25,150,['lab'],'Normal');
+X('bnp','BNP',25,140,['lab'],'Normal');
+X('ddimer','D-dimer',20,110,['lab'],'Normal');
+X('lipase','Lipase',20,70,['lab'],'Normal');
+X('lft','Liver panel',20,70,['lab'],'Normal liver enzymes');
+X('lactate','Lactate',10,60,['lab','icu'],'Normal');
+X('abg','Arterial blood gas',10,120,['lab','icu'],'Normal pH and gases');
+X('a1c','HbA1c',25,60,['lab'],'5.4% (normal)');
+X('tsh','Thyroid panel',25,90,['lab'],'Normal');
+X('tox','Toxicology screen',20,120,['lab'],'Negative');
+X('mono','Monospot test',15,50,['lab'],'Negative');
+X('sti','STI panel (NAAT, RPR, HSV)',30,160,['lab','sh'],'All negative');
+X('bcx','Blood culture',45,200,['lab'],'No growth');
+X('umicro','Urine microscopy',15,90,['neph','lab'],'No casts or crystals');
+X('psyeval','Psychiatric evaluation (MSE)',20,300,['psych'],'Normal mental status');
+X('biopsy','Tissue / marrow biopsy',30,1100,['onc'],'Benign tissue');
+X('pelvic','Pelvic exam',8,150,['ob','sh'],'Normal pelvic exam');
+X('ctg','Fetal heart monitoring',20,250,['ob'],'Not applicable');
+X('genital','Genital examination',6,120,['sh','ob'],'Normal exam');
+X('laryngo','Laryngoscopy',10,300,['ent'],'Normal throat and larynx');
+X('nasal','Nasal endoscopy',10,280,['ent'],'Normal nasal passages');
+X('oral','Oral cavity exam',5,90,['omfs','ent'],'Healthy teeth and gums');
+X('lp','Lumbar puncture',25,800,['neuro','id'],'Clear CSF, normal cell count');
+X('eeg','EEG',40,900,['neuro'],'Normal brain activity');
+X('dermoscopy','Dermatoscopy',5,120,['derm'],'No suspicious pattern');
+X('koh','Skin scraping (KOH / mites)',10,80,['derm','sh'],'No fungus or mites');
+X('skinbx','Skin biopsy',20,600,['derm'],'Benign skin');
+const EXAM_ORDER = Object.keys(EXAMS);
+
+const MEDS = {};
+function M(id,name,type,price){MEDS[id]={id,name,type,price}}
+M('acet','Acetaminophen 500 mg','OTC',12); M('ibu','Ibuprofen 400 mg','OTC',10); M('nap','Naproxen 220 mg','OTC',14);
+M('ors','Oral rehydration salts','OTC',8); M('cetir','Cetirizine 10 mg','OTC',15); M('asa','Aspirin 81 mg','OTC',6);
+M('iron','Ferrous sulfate 325 mg','OTC',9); M('nalox','Naloxone nasal spray','OTC',45); M('docu','Docusate stool softener','OTC',8);
+M('bacitracin','Antibiotic ointment','OTC',7); M('prenatal','Prenatal vitamins','OTC',15); M('chx','Chlorhexidine mouth rinse','OTC',12);
+M('oxy','Oxycodone 5 mg','Rx',45); M('morph','Morphine','Rx',60); M('ketor','Ketorolac','Rx',30);
+M('amox','Amoxicillin 500 mg','Rx',25); M('amoxclav','Amoxicillin-clavulanate','Rx',55); M('azith','Azithromycin','Rx',35);
+M('ceph','Cephalexin','Rx',28); M('nitro','Nitrofurantoin','Rx',40); M('cipro','Ciprofloxacin','Rx',35);
+M('doxy','Doxycycline','Rx',30); M('ceftri','Ceftriaxone injection','Rx',85); M('pcn','Penicillin G benzathine','Rx',320);
+M('valacy','Valacyclovir','Rx',70); M('osel','Oseltamivir','Rx',110); M('pip','Piperacillin-tazobactam','Rx',240);
+M('ondan','Ondansetron','Rx',25); M('metoc','Metoclopramide','Rx',20); M('suma','Sumatriptan','Rx',60);
+M('alb','Albuterol inhaler','Rx',65); M('pred','Prednisone','Rx',15); M('epi','Epinephrine auto-injector','Rx',350);
+M('clop','Clopidogrel','Rx',40); M('atorva','Atorvastatin','Rx',25); M('meto','Metoprolol','Rx',20);
+M('apix','Apixaban','Rx',520); M('furo','Furosemide','Rx',15); M('lisin','Lisinopril','Rx',12);
+M('amlo','Amlodipine','Rx',14); M('ntg','Nitroglycerin (sublingual)','Rx',45); M('insulin','Insulin glargine','Rx',300);
+M('metf','Metformin','Rx',12); M('methim','Methimazole','Rx',35); M('propr','Propranolol','Rx',15);
+M('panto','Pantoprazole','Rx',28); M('sert','Sertraline','Rx',18); M('hydrox','Hydroxyzine','Rx',16);
+M('risp','Risperidone','Rx',40); M('lith','Lithium carbonate','Rx',30); M('levet','Levetiracetam','Rx',55);
+M('nimo','Nimodipine','Rx',210); M('dexa','Dexamethasone','Rx',20); M('tams','Tamsulosin','Rx',25);
+M('gaba','Gabapentin','Rx',22); M('enox','Enoxaparin','Rx',180); M('ssd','Silver sulfadiazine cream','Rx',40);
+M('szc','Sodium zirconium cyclosilicate','Rx',280);
+M('triam','Triamcinolone cream','Rx',25); M('clobet','Clobetasol ointment','Rx',45); M('permeth','Permethrin 5% cream','Rx',35);
+
+const CONDS = [];
+function C(n,d,t,p,a,sx,f,tx,rx){CONDS.push({n,d,t,p,a,sx,F:f.map(s=>{const pres=s[0]==='*';const b=pres?s.slice(1):s;const i=b.indexOf(':');return{x:b.slice(0,i),l:b.slice(i+1),pres}}),tx,rx})}
+C("Migraine","neuro",["er","neuro","im"],"g",[16,55],0,["*hx:Throbbing one-sided headache","*hx:Light hurts her eyes","hx:Zig-zag visual aura before the pain","hx:Nausea","neuro:Normal neurological exam"],["IV fluids, antiemetic, dark room",30,600],["suma","metoc","ibu"]);
+C("Strep throat","ent",["er","ent","im","id"],"g",[5,40],0,["*hx:Sore throat, painful swallowing","vitals:Fever 38.7°C","phys:Swollen tonsils with white exudate","phys:Tender swollen neck lymph nodes","hx:No cough","strep:Rapid strep test positive"],["First antibiotic dose",10,200],["amox","acet"]);
+C("Influenza","id",["er","id","im"],"g",[8,80],0,["*hx:Fever and body aches, sudden onset","*hx:Dry cough","vitals:Fever 39.1°C","hx:Exhausted, chills","flu:Influenza A swab positive"],["Supportive care, fluids",15,250],["osel","acet"]);
+C("Urinary tract infection","im",["er","im","neph","sh"],"g",[18,75],"f",["*hx:Burning on urination","*hx:Urinating very often","palp:Tender just above the pubic bone","ua:Nitrites and white cells in urine"],["Antibiotic course started",10,180],["nitro","acet"]);
+C("Ankle sprain","ortho",["er","ortho"],"g",[12,50],0,["*hx:Rolled ankle playing basketball","*phys:Swollen outer ankle","phys:Tender over ligament, not over bone","rom:Pain with inversion, joint stable"],["Splint and RICE instructions",15,300],["ibu","acet"]);
+C("Gastroenteritis","im",["er","im","id"],"g",[4,70],0,["*hx:Vomiting and watery diarrhea","*hx:Crampy belly pain","phys:Dry mouth, slow skin recoil","vitals:Heart rate 104, temp 37.9°C","palp:Mild diffuse tenderness","bmp:Potassium slightly low"],["IV rehydration",40,700],["ondan","ors"]);
+C("Asthma exacerbation","im",["er","im","icu"],"y",[6,50],0,["*hx:Short of breath, tight chest","*hx:Known asthma, inhaler isn't working","ausc:Wheezing in both lungs","spo2:SpO₂ 91%","vitals:Breathing 28/min","cxr:Chest X-ray: hyperinflated lungs, no pneumonia"],["Nebulized albuterol, IV steroids",30,800],["alb","pred"]);
+C("Simple laceration","trauma",["er","trauma","plastic"],"g",[5,70],0,["*phys:Cut on forearm from a kitchen knife","phys:Bleeding controlled with pressure","wound:4 cm, clean edges, tendon intact","hx:Last tetanus shot over 10 years ago"],["Irrigation, sutures, tetanus booster",20,450],["bacitracin","acet"]);
+C("Panic attack","psych",["er","psych"],"g",[16,45],0,["*hx:Sudden racing heart and fear of dying","*hx:Tight chest, tingling hands","vitals:Heart rate 112, breathing fast","ecg:Sinus tachycardia, no ischemia","phq:GAD-7 score 17 (severe anxiety)"],["Reassurance, breathing coaching",20,300],["hydrox","sert"]);
+C("Acute otitis media","ent",["er","ent"],"g",[2,30],0,["*hx:Ear pain","*hx:Fever overnight","vitals:Fever 38.5°C","oto:Red, bulging eardrum"],["Exam and antibiotic start",10,150],["amox","acet"]);
+C("Anaphylaxis","er",["er","icu"],"r",[8,60],0,["*hx:Ate shrimp 20 minutes ago","*phys:Hives across the body","phys:Lips and tongue swelling","ausc:Wheezing","vitals:BP 78/44, heart rate 128","spo2:SpO₂ 89%"],["IM epinephrine, IV fluids, observation",30,1400],["epi","cetir","pred"]);
+C("Opioid overdose","er",["er","icu"],"r",[17,60],0,["*hx:Found unresponsive by a friend","*phys:Pinpoint pupils","vitals:Breathing 5/min","spo2:SpO₂ 82%","gluc:Glucose normal","tox:Opioids positive"],["Naloxone, airway support",20,1200],["nalox"]);
+C("Concussion","neuro",["er","neuro","trauma"],"y",[10,60],0,["*hx:Hit head in a car crash, blacked out briefly","*hx:Headache and dizziness","neuro:Slow to answer, no focal deficit","hx:Can't remember the crash","cthead:No bleed or skull fracture"],["Observation and neuro checks",60,900],["acet"]);
+C("STEMI (heart attack)","cardio",["cardio"],"r",[45,85],0,["*hx:Crushing chest pressure for 40 minutes","*hx:Pain spreading to left arm and jaw","phys:Sweaty and pale","vitals:BP 98/60, heart rate 104","hx:Nausea","ecg:ST elevation in II, III, aVF","trop:Troponin markedly elevated"],["Cardiac catheterization and stent (PCI)",90,28000],["asa","clop","atorva","meto"]);
+C("Atrial fibrillation with RVR","cardio",["cardio","im","er"],"y",[55,88],0,["*hx:Heart fluttering for 6 hours","*hx:Tired, lightheaded","vitals:Heart rate 142, irregular","ecg:Irregularly irregular, no P waves","tsh:Thyroid levels normal","echo:Enlarged left atrium, EF 55%"],["Rate control and anticoagulation",60,3500],["meto","apix"]);
+C("Heart failure exacerbation","cardio",["cardio","im"],"y",[55,90],0,["*hx:Breathless lying flat, sleeps on 3 pillows","*phys:Swollen ankles, pitting edema","ausc:Crackles at both lung bases","bnp:BNP 1,850 pg/mL","cxr:Enlarged heart, fluid in lungs","echo:Ejection fraction 25%"],["IV diuresis",120,5200],["furo","lisin","meto"]);
+C("Stable angina","cardio",["cardio"],"g",[45,80],0,["*hx:Chest tightness climbing stairs","*hx:Goes away after resting","ecg:Resting ECG normal","trop:Troponin normal","stress:ST depression at peak exercise"],["Medical therapy plan",30,1500],["ntg","asa","atorva"]);
+C("Hypertensive urgency","im",["er","im","cardio"],"y",[40,80],0,["*hx:Pounding headache","*hx:Ran out of blood pressure pills","vitals:BP 198/118","neuro:Normal neuro exam","ecg:Left ventricular hypertrophy","bmp:Kidney function normal"],["Oral BP medicines, observation",60,800],["amlo","lisin"]);
+C("Tibial shaft fracture","ortho",["ortho","trauma"],"y",[16,60],0,["*hx:Motorcycle crash, can't stand","*phys:Visible deformity of lower leg","phys:Foot pulses present","xr:Displaced mid-shaft tibia fracture"],["Intramedullary nailing surgery",150,22000],["oxy","acet","docu"]);
+C("Distal radius fracture","ortho",["ortho","er"],"g",[50,85],0,["*hx:Fell on outstretched hand","*phys:Wrist swollen in a 'dinner fork' shape","rom:Painful, limited wrist motion","xr:Distal radius fracture, angled backward"],["Closed reduction and cast",45,3800],["ibu","acet"]);
+C("ACL tear","ortho",["ortho"],"g",[16,40],0,["*hx:Heard a pop pivoting in soccer","*phys:Knee swelled within hours","rom:Positive Lachman test","mrijoint:Complete ACL tear"],["Arthroscopic ACL reconstruction",120,16000],["nap","acet"]);
+C("Hip fracture","ortho",["ortho"],"y",[70,95],0,["*hx:Fell at home, can't walk","*phys:Leg shortened and turned outward","rom:Severe pain moving the hip","xr:Displaced femoral neck fracture","cbc:Mild anemia"],["Hip replacement (hemiarthroplasty)",150,26000],["acet","oxy","enox"]);
+C("Lumbar disc herniation","ortho",["ortho","neuro"],"g",[28,60],0,["*hx:Low back pain shooting down one leg","*hx:Started after lifting a box","rom:Positive straight leg raise at 40°","neuro:Weak big toe, reduced ankle reflex","mrispine:L5-S1 disc pressing on nerve root"],["Physical therapy plan, epidural injection",40,2600],["nap","gaba"]);
+C("Community-acquired pneumonia","im",["im","id","er"],"y",[30,90],0,["*hx:Cough with green sputum","*hx:Fever and chills for 3 days","vitals:Fever 39.0°C, breathing 24/min","ausc:Crackles in right lower lung","cbc:White count 17,000","cxr:Right lower lobe consolidation"],["IV antibiotics started",60,4200],["azith","amoxclav"]);
+C("Diabetic ketoacidosis","icu",["icu","im"],"r",[12,40],0,["*hx:Extreme thirst, urinating constantly","*hx:Vomiting, belly pain","phys:Deep rapid breathing, fruity breath","gluc:Glucose 486 mg/dL","bmp:Anion gap 24, bicarbonate 9","abg:pH 7.08"],["Insulin drip and IV fluids",180,14000],["insulin"]);
+C("Type 2 diabetes (new)","im",["im"],"g",[35,70],0,["*hx:Always thirsty, up at night to urinate","*hx:Blurry vision","phys:Dark velvety skin folds on neck","gluc:Random glucose 268 mg/dL","a1c:HbA1c 9.4%"],["Diabetes education and plan",30,600],["metf"]);
+C("Graves' disease","im",["im"],"g",[20,50],"f",["*hx:Lost 6 kg without trying","*hx:Heart pounding, always feels hot","phys:Fine tremor, bulging eyes","vitals:Heart rate 118","tsh:TSH suppressed, free T4 high"],["Endocrine treatment plan",30,700],["methim","propr"]);
+C("Iron deficiency anemia","im",["im","onc"],"g",[18,50],"f",["*hx:Tired all the time","*hx:Very heavy periods","phys:Pale skin and inner eyelids","ausc:Soft flow murmur","cbc:Hemoglobin 8.2, small red cells"],["Iron replacement plan",20,400],["iron"]);
+C("Upper GI bleed","gs",["gs","im","icu"],"r",[40,85],0,["*hx:Vomited blood","*hx:Black, tarry stools","hx:Takes ibuprofen every day","vitals:Heart rate 124, BP 88/54","cbc:Hemoglobin 6.9"],["Transfusion and endoscopic clipping",90,15000],["panto"]);
+C("Cellulitis","id",["er","id","im","derm"],"g",[20,80],0,["*phys:Red, hot, swollen lower leg","*hx:Small cut on the shin 3 days ago","vitals:Fever 38.3°C","cbc:White count 13,500","doppler:No clot"],["First antibiotic dose, mark the border",20,500],["ceph","ibu"]);
+C("Bacterial meningitis","id",["id","neuro","icu"],"r",[17,30],0,["*hx:Severe headache and fever","*phys:Stiff neck","hx:Light hurts eyes","neuro:Positive Kernig's sign, confused","phys:Purple rash that doesn't fade under pressure","lp:Cloudy CSF, high white cells, low glucose"],["IV antibiotics and steroids",60,12000],["ceftri","dexa"]);
+C("Urosepsis","icu",["icu","id"],"r",[60,90],0,["*hx:Confused since this morning","*hx:Burning urine for a week","vitals:Fever 39.4°C, BP 84/50, HR 126","ua:Nitrites, many white cells","lactate:Lactate 4.6","bcx:Gram-negative rods"],["Sepsis bundle: fluids, IV antibiotics",120,18000],["pip"]);
+C("Infectious mononucleosis","id",["id","im","er"],"g",[14,25],0,["*hx:Sore throat and exhaustion for 10 days","*phys:Swollen neck lymph nodes","vitals:Fever 38.2°C","palp:Enlarged spleen","mono:Monospot positive","cbc:Many atypical lymphocytes"],["Supportive care, no contact sports",15,250],["acet"]);
+C("Partial-thickness burns","trauma",["trauma","icu"],"r",[18,70],0,["*hx:Kitchen grease fire","*phys:Blistered burns on chest and arms","burn:22% TBSA, partial thickness","vitals:Heart rate 130","phys:Singed nose hairs, hoarse voice"],["Parkland fluid resuscitation and dressings",180,32000],["morph","ssd"]);
+C("Gunshot wound to abdomen","trauma",["trauma","gs"],"r",[16,45],"m",["*phys:Gunshot wound, left upper abdomen","*vitals:BP 76/40, heart rate 140","phys:Rigid, distended belly","fast:Free fluid in the abdomen","cbc:Hemoglobin 7.4"],["Emergency exploratory laparotomy",180,48000],["morph","ceph","docu"]);
+C("Spontaneous pneumothorax","trauma",["trauma","gs","er","icu"],"r",[18,40],"m",["*hx:Sudden sharp chest pain","*hx:Short of breath","phys:Tall, thin build","ausc:No breath sounds on the right","spo2:SpO₂ 88%","cxr:Collapsed right lung with pleural line"],["Chest tube insertion",40,6500],["morph"]);
+C("Acute appendicitis","gs",["gs"],"y",[10,40],0,["*hx:Pain began at belly button, moved to lower right","*hx:No appetite, nausea","vitals:Fever 38.1°C","palp:Tender at McBurney's point, rebound tenderness","cbc:White count 15,200","ctabd:Inflamed 12 mm appendix"],["Laparoscopic appendectomy",90,18000],["oxy","acet","docu"]);
+C("Acute cholecystitis","gs",["gs"],"y",[35,70],"f",["*hx:Right upper belly pain after a fatty meal","*hx:Vomiting","palp:Positive Murphy's sign","vitals:Fever 38.4°C","cbc:White count 14,000","usabd:Gallstones, thickened gallbladder wall"],["Laparoscopic cholecystectomy",100,17000],["ketor","ondan"]);
+C("Acute pancreatitis","im",["im","gs","icu"],"y",[30,65],"m",["*hx:Severe upper belly pain boring into the back","*hx:Drinks heavily","hx:Vomiting","palp:Epigastric tenderness","lipase:Lipase 1,480 U/L","lft:Mildly raised liver enzymes"],["IV fluids, bowel rest",120,9000],["morph","ondan"]);
+C("Inguinal hernia","gs",["gs"],"g",[30,75],"m",["*hx:Bulge in groin, worse when lifting","phys:Bulge appears with cough, pushes back in","usabd:Inguinal hernia containing fat, no strangulation"],["Laparoscopic hernia repair",80,9500],["acet","ibu"]);
+C("Major depressive disorder","psych",["psych","im"],"g",[18,65],0,["*hx:Feeling low for 2 months","*hx:Lost interest in everything","hx:Poor sleep, low energy","phq:PHQ-9 score 19","psyeval:Flat affect, no psychosis","tsh:Thyroid levels normal"],["Psychotherapy referral, safety plan",40,700],["sert"]);
+C("Acute psychosis (schizophrenia)","psych",["psych"],"y",[18,30],"m",["*hx:Family says he talks to himself","*hx:Believes neighbors are watching him","psyeval:Disorganized speech, hearing voices","tox:Tox screen negative","cthead:Normal"],["Inpatient psychiatric admission",60,5000],["risp"]);
+C("Bipolar disorder, manic episode","psych",["psych"],"y",[18,40],0,["*hx:Hasn't slept in 4 days but feels great","*hx:Spent $9,000 in a weekend","psyeval:Pressured speech, racing ideas","tox:Tox screen negative","tsh:Thyroid levels normal"],["Mood stabilization",60,4500],["lith"]);
+C("Lung cancer","onc",["onc"],"y",[55,85],0,["*hx:Coughing up blood","*hx:Lost 8 kg, longtime smoker","ausc:Reduced breath sounds, right upper lung","cxr:Spiculated right upper lobe mass","ctchest:4 cm mass with enlarged lymph nodes","biopsy:Adenocarcinoma"],["Staging and chemotherapy start",120,24000],["ondan","oxy"]);
+C("Acute myeloid leukemia","onc",["onc"],"y",[20,70],0,["*hx:Exhausted and bruising easily","*hx:Fevers that keep coming back","phys:Pale, scattered bruises","vitals:Fever 38.6°C","cbc:Blast cells on smear, platelets 18,000","biopsy:Bone marrow: 60% myeloblasts"],["Induction chemotherapy",180,38000],["ondan","acet"]);
+C("Breast cancer","onc",["onc"],"g",[40,75],"f",["*hx:Found a lump in her breast","phys:Firm, fixed 2 cm lump, upper outer breast","phys:Enlarged armpit lymph node","mammo:Irregular spiculated mass (BI-RADS 5)","biopsy:Invasive ductal carcinoma"],["Lumpectomy and treatment plan",120,21000],["acet"]);
+C("Ectopic pregnancy","ob",["ob"],"r",[18,40],"f",["*hx:Sharp one-sided pelvic pain","*hx:Period is 6 weeks late","hx:Light vaginal bleeding","vitals:BP 88/56, heart rate 118","hcg:Positive","uspelvic:Empty uterus, tubal mass, free fluid"],["Laparoscopic salpingectomy",90,16000],["acet","oxy"]);
+C("Active labor","ob",["ob"],"y",[18,42],"f",["*hx:39 weeks pregnant, contractions every 4 minutes","*hx:Water broke an hour ago","hcg:Positive","pelvic:Cervix dilated 6 cm","ctg:Fetal heart rate 140, reassuring"],["Vaginal delivery",240,12000],["ibu","prenatal"]);
+C("Pelvic inflammatory disease","ob",["ob","sh"],"y",[17,35],"f",["*hx:Lower belly pain for 5 days","*hx:Unusual vaginal discharge","vitals:Fever 38.3°C","pelvic:Cervical motion tenderness","sti:Gonorrhea NAAT positive"],["IM ceftriaxone, oral antibiotics",20,700],["ceftri","doxy"]);
+C("Complex facial laceration","plastic",["plastic"],"g",[8,60],0,["*phys:Deep cut across upper lip from a dog bite","wound:Crosses the lip's vermilion border","neuro:No facial nerve weakness","hx:Dog is vaccinated"],["Layered plastic surgery repair",60,5500],["amoxclav","acet"]);
+C("Full-thickness hand burn","plastic",["plastic","trauma"],"y",[20,65],0,["*hx:Hand touched molten metal at work","*phys:White, leathery patch on the back of the hand","burn:Full thickness, 2% TBSA","phys:Center of the burn has no feeling"],["Excision and skin graft",150,19000],["oxy","ssd"]);
+C("Chlamydia","sh",["sh","ob"],"g",[16,35],0,["*hx:Burning when urinating","*hx:New sexual partner","genital:Clear discharge","ua:White cells, no nitrites","sti:Chlamydia NAAT positive"],["Counseling and partner notification",15,200],["doxy"]);
+C("Primary syphilis","sh",["sh"],"g",[18,50],"m",["*hx:Painless sore on the genitals","genital:Single clean-based painless ulcer","phys:Rubbery swollen groin lymph nodes","sti:RPR reactive, treponemal antibody positive"],["Injection and follow-up plan",15,300],["pcn"]);
+C("Genital herpes","sh",["sh","ob"],"g",[18,40],0,["*hx:Painful blisters on the genitals","*hx:Felt flu-ish first","genital:Clustered blisters and shallow ulcers","sti:HSV-2 PCR positive"],["Counseling and antiviral start",15,250],["valacy","acet"]);
+C("Kidney stone","neph",["neph","er","im"],"y",[25,60],"m",["*hx:Severe colicky flank pain, can't sit still","*hx:Pain moves toward the groin","hx:Nausea","ua:Blood in urine","ctabd:5 mm stone in left ureter"],["IV pain control and fluids",60,3200],["ketor","tams"]);
+C("Acute kidney injury, hyperkalemia","neph",["neph","icu"],"r",[55,85],0,["*hx:Barely urinating for 2 days","*hx:Weak and nauseated","ecg:Tall peaked T waves","bmp:Potassium 7.1, creatinine 5.4","umicro:Muddy brown casts"],["IV calcium, insulin, emergency dialysis",120,16000],["szc"]);
+C("Pyelonephritis","neph",["neph","im","er"],"y",[18,60],"f",["*hx:Flank pain and fever","*hx:Burning urination last week","vitals:Fever 39.2°C","palp:Costovertebral angle tenderness","ua:Nitrites, white cell casts","cbc:White count 16,000"],["IV antibiotic, then oral course",45,2800],["cipro","acet"]);
+C("Peritonsillar abscess","ent",["ent"],"y",[16,35],0,["*hx:Worst sore throat, can't swallow saliva","*hx:Muffled 'hot potato' voice","phys:Can barely open mouth (trismus)","laryngo:Uvula pushed aside, tonsil bulging","strep:Rapid strep negative"],["Needle aspiration and drainage",30,2400],["amoxclav","ibu"]);
+C("Severe nosebleed","ent",["ent","er"],"y",[50,85],0,["*hx:Nose bleeding for 45 minutes","*hx:Takes a blood thinner","vitals:BP 168/94","nasal:Bleeding vessel on the front of the septum","cbc:Hemoglobin normal"],["Chemical cautery and nasal packing",30,1500],["acet"]);
+C("Dental abscess","omfs",["omfs"],"g",[18,60],0,["*hx:Throbbing toothache for 4 days","*phys:Swollen cheek","oral:Fluctuant swelling at a lower molar","vitals:Fever 38.0°C","pano:Dark area at the tooth root tip"],["Incision, drainage and extraction",40,1600],["amox","ibu","chx"]);
+C("Mandible fracture","omfs",["omfs","trauma"],"y",[18,40],"m",["*hx:Punched in the jaw","*hx:Teeth don't fit together right","oral:Step in the tooth line, bleeding gums","phys:Numb lower lip","pano:Fracture through the angle of the mandible"],["Open reduction and plating",120,14000],["oxy","chx","acet"]);
+C("Ischemic stroke","neuro",["neuro"],"r",[55,90],0,["*hx:Suddenly couldn't lift right arm an hour ago","*phys:Right face drooping, forehead spared","hx:Slurred speech","vitals:BP 186/102","nihss:Score 11","gluc:Glucose normal","cthead:No bleeding","mribrain:Acute infarct, left MCA territory"],["IV thrombolysis (tPA)",60,22000],["asa","atorva"]);
+C("Subarachnoid hemorrhage","neuro",["neuro","icu"],"r",[35,65],0,["*hx:Sudden 'worst headache of my life'","*hx:Vomiting","phys:Stiff neck","neuro:Drowsy, no focal weakness","vitals:BP 182/100","cthead:Blood in the subarachnoid space"],["Aneurysm coiling",150,42000],["nimo"]);
+C("New-onset epilepsy","neuro",["neuro","er"],"y",[18,45],0,["*hx:Witnessed full-body shaking for 2 minutes","*hx:Confused afterward","phys:Bitten side of tongue","gluc:Glucose normal","tox:Tox screen negative","eeg:Epileptiform spikes, left temporal lobe"],["Start anti-seizure medicine",40,3500],["levet"]);
+C("Bell's palsy","neuro",["neuro","er","ent"],"g",[20,60],0,["*hx:Woke up with one side of face drooping","*hx:Ache behind the ear","neuro:Whole half of face weak, including forehead","nihss:Score 1 (facial only), limbs normal"],["Steroids and eye protection",20,400],["pred","valacy"]);
+C("Pulmonary embolism","im",["im","icu","cardio"],"r",[30,75],0,["*hx:Sharp chest pain when breathing in","*hx:Short of breath, flew 12 hours last week","vitals:Heart rate 118","spo2:SpO₂ 90%","ddimer:D-dimer elevated","ctpa:Clot in the right pulmonary artery"],["Anticoagulation start",60,8000],["apix"]);
+C("Deep vein thrombosis","im",["im"],"g",[40,80],0,["*hx:Left calf painful and swollen","*hx:Knee surgery 2 weeks ago","phys:Left calf 3 cm wider than the right","ddimer:D-dimer elevated","doppler:Clot in the popliteal vein"],["Anticoagulation start",30,1800],["apix"]);
+C("Allergic contact dermatitis","derm",["derm","er"],"g",[8,70],0,["*hx:Itchy rash two days after a hike","*phys:Streaks of small blisters on the forearms","hx:Rash only where skin brushed leaves","koh:No fungus or mites"],["Topical steroid plan, avoid trigger",15,200],["triam","cetir"]);
+C("Shingles (herpes zoster)","derm",["derm","er","id","im"],"g",[55,85],0,["*hx:Burning pain on one side of the chest","*phys:Band of blisters on one side, stops at the midline","hx:Had chickenpox as a child","dermoscopy:Grouped vesicles on a red base"],["Antiviral start and pain plan",15,300],["valacy","acet"]);
+C("Melanoma","derm",["derm","onc"],"g",[35,80],0,["*hx:Mole that has grown and changed color","*phys:7 mm mole, uneven border, several colors","dermoscopy:Atypical pigment network, blue-white veil","skinbx:Malignant melanoma, 1.2 mm deep"],["Wide local excision",60,6500],["acet"]);
+C("Psoriasis flare","derm",["derm"],"g",[20,60],0,["*hx:Itchy patches on elbows and knees, spreading","*phys:Thick red plaques with silvery scale","phys:Pitted fingernails","koh:No fungus","skinbx:Thickened epidermis with parakeratosis"],["Topical therapy plan",20,350],["clobet"]);
+C("Scabies","derm",["derm","sh","er"],"g",[5,70],0,["*hx:Intense itching, worse at night","*hx:Roommate is itchy too","phys:Tiny burrows between the fingers","koh:Mites and eggs on scraping"],["Household treatment plan",15,200],["permeth","cetir"]);
+C("Stevens-Johnson syndrome","derm",["derm","icu"],"r",[18,70],0,["*hx:Started a new seizure medicine 2 weeks ago","*phys:Painful dusky rash, skin peeling off","phys:Sores in the mouth and eyes","vitals:Fever 39.0°C, heart rate 120","skinbx:Full-thickness epidermal necrosis"],["Stop the drug, burn-unit style wound care",180,26000],["morph"]);
+
+const FIRST_F = ["Maya","Grace","Lucia","Amara","Hannah","Nora","Priya","Elena","Tasha","Ruth","Mei","Sofia","Zoe","Imani","Leah","Rosa","Ivy","Dana","June","Keisha","Ana","Hazel","Noor","Esther"];
+const FIRST_M = ["Marcus","Daniel","Owen","Rafael","Kwame","Theo","Samuel","Luis","Arjun","Victor","Jamal","Henry","Elijah","Tomás","Ray","Felix","Gus","Andre","Malik","Walter","Isaac","Diego","Kenji","Omar"];
+const LAST = ["Okafor","Reyes","Lindqvist","Patel","Brennan","Nakamura","Holloway","Adeyemi","Castillo","Marsh","Whitaker","Duarte","Kowalski","Abernathy","Chen","Fontaine","Delgado","Moreau","Greer","Osei","Yamada","Pruitt","Vance","Haddad","Sutton","Ibarra","Quinlan","Barros","Thorne","Ellison"];
+const INS = [
+ {n:'Uninsured',c:.25,w:2},{n:'StateCare',c:.55,w:2},{n:'Unity Health',c:1,w:2},{n:'Harbor Mutual',c:.95,w:2},
+ {n:'Bluepoint Shield',c:1.1,w:1.5},{n:'Cygnet Care',c:1.05,w:1.5},{n:'Evergreen PPO',c:1.2,w:1}];
+const SENIOR = {n:'SilverYears',c:.8,w:0};
+
+/* ================= STATE ================= */
+const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
+let BOOK={}; try{BOOK=JSON.parse(localStorage.getItem(BOOKKEY)||'{}')||{}}catch(e){BOOK={}}
+let bookV=0,bookQ='',bookKey=null,mainMode=null;
+function learn(c){const first=!BOOK[c.n];BOOK[c.n]=(BOOK[c.n]||0)+1;bookV++;try{localStorage.setItem(BOOKKEY,JSON.stringify(BOOK))}catch(e){}
+  if(first)log(`New casebook entry: ${c.n}.`,'good');}
+let S=null, dirty=true, chartKey=null, chartPending=false, lastReal=performance.now();
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function wpick(arr,wf){const tot=arr.reduce((s,x)=>s+wf(x),0);let r=Math.random()*tot;for(const x of arr){r-=wf(x);if(r<=0)return x}return arr[arr.length-1]}
+const fmt$=n=>(n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('en-US');
+function clockStr(t){const m=480+Math.floor(t);const d=Math.floor(m/1440)+1;const h=Math.floor(m%1440/60),mm=m%60;return `Day ${d} · ${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+
+function fresh(name){
+  const depts={};DEPTS.forEach(d=>depts[d.id]={on:d.id==='er',lead:d.id==='er'?1:0,nurse:d.id==='er'?1:0,q:[],w:[]});
+  S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:ARRIVAL,depts,rec:[],morgue:[],P:{},seq:1,log:[],
+     st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'rec',pid:null};
+  for(let i=0;i<3;i++)arrive();
+  log(`${name} opened its doors. The ER is staffed and ready.`,'good');
+}
+function save(){try{if(S)localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}return null}
+
+function log(msg,kind=''){S.log.unshift({t:S.t,msg,kind});if(S.log.length>40)S.log.length=40}
+function toast(msg,kind=''){const el=document.createElement('div');el.className='toast '+kind;el.textContent=msg;const box=document.getElementById('toasts');box.appendChild(el);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>el.remove(),4200)}
+function rep(n){S.rep=Math.max(0,Math.min(100,S.rep+n))}
+const pname=p=>`${p.first} ${p.last}`;
+const cond=p=>CONDS[p.c];
+
+function arrive(){
+  if(S.rec.length>=RECMAX){S.st.away++;rep(-1);log('Reception was full. An arriving patient went to another hospital.','warn');return}
+  const ci=CONDS.indexOf(wpick(CONDS,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
+  const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
+  const ins=age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
+  const id='p'+(S.seq++);
+  const rev=[];c.F.forEach((f,i)=>{if(f.pres)rev.push(i)});
+  const p={id,first:pick(sex==='f'?FIRST_F:FIRST_M),last:pick(LAST),age,sex,ins:ins.n,cov:ins.c,c:ci,rev,res:{},loc:'rec',inW:false,
+    arr:S.t,deadline:S.t+PAT[c.p],span:PAT[c.p],busy:null,dx:null,bill:0,stab:0,from:null,v:0};
+  S.P[id]=p;S.rec.push(id);dirty=true;
+  if(c.p==='r')log(`${pname(p)} arrived at Reception: urgent.`,'bad');
+}
+
+/* ---------- placement ---------- */
+function space(d){const D=S.depts[d];return D.q.length<QMAX||D.w.length<WMAX}
+function addTo(p,d){const D=S.depts[d];if(D.q.length<QMAX){D.q.push(p.id);p.inW=false}else if(D.w.length<WMAX){D.w.push(p.id);p.inW=true}else return false;p.loc=d;p.v++;return true}
+function removeFrom(p){
+  if(p.loc==='rec')S.rec=S.rec.filter(x=>x!==p.id);
+  else if(p.loc==='morgue')S.morgue=S.morgue.filter(x=>x!==p.id);
+  else if(S.depts[p.loc]){const D=S.depts[p.loc];D.q=D.q.filter(x=>x!==p.id);D.w=D.w.filter(x=>x!==p.id);
+    while(D.q.length<QMAX&&D.w.length){const nid=D.w.shift();D.q.push(nid);const np=S.P[nid];if(np){np.inW=false;np.v++}}}
+}
+function gone(p){removeFrom(p);delete S.P[p.id];if(S.pid===p.id)S.pid=null;dirty=true}
+
+/* ---------- work capacity ---------- */
+function busyCount(d){let n=0;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.d===d)n++}return n}
+function canWork(d){const D=S.depts[d];return D&&D.on&&D.lead>0&&busyCount(d)<D.lead}
+function dur(min,d){const D=S.depts[d];const cut=DEPT[d].kind==='clinic'?Math.min(.4,D.nurse*.1):0;return Math.max(1,Math.round(min*(1-cut)))}
+function examHere(x,d){const e=EXAMS[x];if(!d||!DEPT[d])return false;return e.depts==='basic'?DEPT[d].kind==='clinic':e.depts.includes(d)}
+
+/* ---------- actions ---------- */
+function startExam(p,x){
+  const e=EXAMS[x];if(p.busy||p.inW||p.res[x]||!examHere(x,p.loc)||!canWork(p.loc))return;
+  p.busy={k:'exam',x,d:p.loc,start:S.t,end:S.t+dur(e.min,p.loc)};p.v++;dirty=true;
+}
+function startTreat(p){
+  const c=cond(p);if(p.dx!==p.c||p.busy||p.inW||!c.t.includes(p.loc)||!canWork(p.loc))return;
+  p.busy={k:'treat',d:p.loc,start:S.t,end:S.t+dur(c.tx[1],p.loc)};p.deadline=null;p.v++;dirty=true;
+  log(`Treatment started for ${pname(p)}: ${c.tx[0]}.`);
+}
+function startStab(p){
+  if(p.busy||p.inW||p.stab>=2||!['er','icu'].includes(p.loc)||!p.deadline||!canWork(p.loc))return;
+  p.busy={k:'stab',d:p.loc,start:S.t,end:S.t+4};p.v++;dirty=true;
+}
+function startAutopsy(p){
+  if(p.busy||p.autopsy||!canWork('path'))return;
+  p.busy={k:'autopsy',d:'path',start:S.t,end:S.t+dur(30,'path')};p.v++;dirty=true;
+}
+function diagnose(p,ci){
+  const c=cond(p);
+  if(ci===p.c){p.dx=ci;rep(1);learn(c);p.v++;dirty=true;log(`Correct diagnosis: ${pname(p)} has ${c.n}.`,'good');toast(`Correct: ${c.n}`,'good');}
+  else{S.st.misdx++;rep(-5);learn(c);log(`Misdiagnosis: ${pname(p)} was told ${CONDS[ci].n} but had ${c.n}. They left unhappy.`,'bad');
+    toast(`Wrong. ${p.first} actually had ${c.n}. They left without paying.`,'bad');gone(p)}
+}
+function sendTo(p,d){
+  if(p.busy||!S.depts[d]||!S.depts[d].on||p.loc===d||!space(d))return;
+  const from=p.loc;removeFrom(p);p.from=from==='rec'?null:from;addTo(p,d);dirty=true;
+  if(S.pid===p.id&&from==='rec'){}/* keep chart open */
+}
+function transfer(p){
+  if(p.busy)return;const c=cond(p);const amt=Math.round(p.bill*p.cov);
+  S.money+=amt;S.st.revenue+=amt;S.st.xfer++;if(p.dx===p.c){}else rep(-1);
+  log(`${pname(p)} transferred to another hospital${p.dx===p.c?` for ${c.n}`:''}.${amt?` Collected ${fmt$(amt)} for tests.`:''}`,'warn');
+  toast(`${p.first} transferred${amt?` · +${fmt$(amt)}`:''}`,'warn');gone(p);
+}
+function finishTreat(p){
+  const c=cond(p);p.bill+=c.tx[2];const amt=Math.round(p.bill*p.cov);S.money+=amt;S.st.revenue+=amt;S.st.treated++;rep(2);
+  log(`${pname(p)} treated for ${c.n}. Collected ${fmt$(amt)} (${p.ins}).`,'good');toast(`${p.first} treated · +${fmt$(amt)}`,'good');
+  p.treated=true;p.busy=null;p.deadline=null;
+  const P=S.depts.pharm;
+  if(P.on&&space('pharm')){removeFrom(p);p.from=null;addTo(p,'pharm');p.phT=S.t;}
+  else{log(`${pname(p)} went home with a paper prescription${P.on?' (pharmacy full)':''}.`);gone(p)}
+}
+function dispense(p,ids){
+  if(!S.depts.pharm.lead)return;const c=cond(p);const need=new Set(c.rx);
+  let good=0,bad=0,rev=0;ids.forEach(id=>{if(need.has(id)){good++;rev+=MEDS[id].price}else bad++});
+  const missed=c.rx.length-good;rev=Math.round(rev*p.cov);S.money+=rev;S.st.revenue+=rev;
+  if(!missed&&!bad){rep(2);log(`Pharmacy: perfect prescription for ${pname(p)}. +${fmt$(rev)}`,'good');toast(`Perfect prescription · +${fmt$(rev)}`,'good')}
+  else{rep(-(missed+bad));const want=c.rx.map(r=>MEDS[r].name).join(', ');
+    log(`Pharmacy: ${pname(p)} got ${good}/${c.rx.length} right${bad?`, ${bad} unneeded`:''}. Standard: ${want}.`,'warn');
+    toast(`Standard for ${c.n}: ${want}`,'warn')}
+  gone(p);
+}
+function die(p){
+  S.st.died++;rep(-8);const c=cond(p);p.busy=null;
+  log(`${pname(p)} died waiting for care.`,'bad');toast(`${p.first} ${p.last} died. Urgent patients have 30 minutes.`,'bad');
+  removeFrom(p);
+  if(S.depts.path.on&&S.morgue.length<QMAX){p.loc='morgue';p.deadline=null;p.v++;S.morgue.push(p.id)}else{delete S.P[p.id];if(S.pid===p.id)S.pid=null}
+  dirty=true;
+}
+function leave(p){S.st.left++;rep(p.span===PAT.y?-3:-2);log(`${pname(p)} got tired of waiting and left.`,'warn');gone(p)}
+
+function complete(p){
+  const b=p.busy;p.busy=null;p.v++;dirty=true;const c=cond(p);
+  if(b.k==='exam'){const e=EXAMS[b.x];const hits=[];c.F.forEach((f,i)=>{if(f.x===b.x){hits.push(f.l);if(!p.rev.includes(i))p.rev.push(i)}});
+    p.res[b.x]=hits.length?hits:null;p.bill+=e.cost;
+    if(S.pid!==p.id&&c.p==='r'&&hits.length)log(`${e.name} ready for ${pname(p)}.`);}
+  else if(b.k==='treat'){finishTreat(p)}
+  else if(b.k==='stab'){p.stab++;p.bill+=400;if(p.deadline){p.deadline+=25;p.span+=25}log(`${pname(p)} stabilized: +25 minutes.`,'good')}
+  else if(b.k==='autopsy'){p.autopsy=true;learn(c);S.money+=600;S.st.revenue+=600;log(`Autopsy: ${pname(p)} died of ${c.n}. +$600 county fee.`)}
+}
+
+/* ---------- simulation ---------- */
+function step(dt){
+  S.t+=dt;
+  while(S.t>=S.next){arrive();S.next+=ARRIVAL}
+  const day=Math.floor((480+S.t)/1440);
+  if(day>S.day){S.day=day;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
+    S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
+  for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
+    if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
+    if(p.deadline&&S.t>=p.deadline&&!(p.busy&&p.busy.k==='treat')){if(cond(p).p==='r')die(p);else leave(p);continue}
+    if(p.loc==='pharm'&&S.t-p.phT>180){log(`${pname(p)} left the pharmacy line with a paper prescription.`);gone(p)}
+  }
+}
+
+/* ================= RENDER ================= */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function locName(l){return l==='rec'?'Reception':l==='morgue'?'Morgue':DEPT[l]?DEPT[l].name:l}
+
+function renderSide(){
+  const on=DEPTS.filter(d=>S.depts[d.id].on), off=DEPTS.filter(d=>!S.depts[d.id].on);
+  const redIn=ids=>ids.filter(i=>S.P[i]&&cond(S.P[i]).p==='r'&&!S.P[i].treated).length;
+  const item=(id,code,name,count,hue,reds)=>`<button class="navi ${S.view===id?'on':''}" data-act="view" data-v="${id}">
+    <span class="badge" style="--h:${hue}">${code}</span><span class="nm">${esc(name)}</span>${reds?`<span class="redct">${reds}!</span>`:''}<span class="ct">${count}</span></button>`;
+  let h=`<div><h3>Floor directory</h3><div class="nav open-list">`;
+  h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec));
+  h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
+  on.forEach(d=>{const D=S.depts[d.id];const n=d.kind==='path'?S.morgue.length:D.q.length+D.w.length;h+=item(d.id,d.code,d.name,n,d.hue,redIn([...D.q,...D.w]))});
+  h+=`</div></div><div><h3>Locked departments</h3><div class="nav">`;
+  off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
+    <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
+    <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
+  h+=`</div></div>
+  <div><h3>Shift totals</h3><div class="stats">
+   <div>Treated <b>${S.st.treated}</b></div><div>Transferred <b>${S.st.xfer}</b></div>
+   <div>Left <b>${S.st.left}</b></div><div>Died <b>${S.st.died}</b></div>
+   <div>Misdiagnosed <b>${S.st.misdx}</b></div><div>Turned away <b>${S.st.away}</b></div></div></div>
+  <details class="help"><summary>How a case flows</summary><ol>
+   <li>Click a patient at Reception and read the complaint. The name color is triage: red, yellow, green.</li>
+   <li>Send them to an open department. The ER can run basic exams, ECG and quick swabs.</li>
+   <li>Run tests to uncover findings. Imaging lives in Radiology, blood work in the Lab: send them there, then back.</li>
+   <li>Pick the diagnosis. Wrong guesses cost reputation and the patient leaves.</li>
+   <li>Treat in a department that handles that condition, or transfer them out.</li>
+   <li>With a Pharmacy open, treated patients come to you for meds. Pick what a real doctor would prescribe.</li>
+   <li>Every confirmed diagnosis, misdiagnosis or autopsy adds the full case to your Casebook.</li>
+  </ol></details>`;
+  document.getElementById('side').innerHTML=h;
+}
+
+function card(p){
+  const c=cond(p);let st='Waiting',cls='';
+  if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treating':p.busy.k==='stab'?'Stabilizing':'Autopsy';st=`${lbl} · <span class="mono" data-bzt="${p.id}"></span>`;cls='busy'}
+  else if(p.loc==='morgue')st=p.autopsy?`Cause: ${esc(c.n)}`:'Awaiting autopsy';
+  else if(p.treated)st='Waiting for medication';
+  else if(p.inW)st='In waiting room';
+  else if(p.dx===p.c){st=`Dx: ${esc(c.n)}`;cls='dx'}
+  else if(p.loc==='rec')st='Needs triage';
+  else{const n=Object.keys(p.res).length;st=n?`${n} test${n>1?'s':''} done`:'Ready for exam'}
+  const showBar=p.busy||p.deadline;
+  return `<button class="pt ${S.pid===p.id?'sel':''}" data-act="pt" data-pid="${p.id}">
+   <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span></span>
+   <span class="meta">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span>
+   <span class="status ${cls}">${st}</span>
+   ${showBar?`<span class="bar ${p.busy?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
+   ${p.deadline&&!p.busy?`<span class="timeline"><span>Leaves in</span><span data-dlt="${p.id}"></span></span>`:''}
+  </button>`;
+}
+function slots(ids,max,label){
+  let h='';ids.forEach(id=>{const p=S.P[id];if(p)h+=card(p)});
+  for(let i=ids.length;i<max;i++)h+=`<div class="slot-empty">${label} ${i+1}</div>`;
+  return `<div class="slots">${h}</div>`;
+}
+function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
+
+function renderMain(){
+  const m=document.getElementById('main');let h='';const v=S.view;
+  if(v==='book'){
+    if(mainMode!=='book'){m.innerHTML=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:280">BOOK</span><div><h1>Casebook</h1>
+      <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. It stays in this browser across new games.</p></div></div></div>
+      <div class="bookbar"><label for="bookQ" class="sr">Search cases</label><input id="bookQ" type="search" placeholder="Search by condition, symptom or test…" value="${esc(bookQ)}"><span class="cap mono" id="bookCount"></span></div>
+      <div id="bookList"></div>`;mainMode='book';bookKey=null}
+    const key=bookV+'|'+bookQ;if(key!==bookKey){bookKey=key;document.getElementById('bookList').innerHTML=bookHTML()}
+    return;
+  }
+  mainMode=v;
+  if(v==='rec'){
+    h+=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:40">DESK</span><div><h1>Reception &amp; Check-in</h1>
+      <p>New patient every ${ARRIVAL} minutes. Click one to read their complaint and route them.</p></div></div></div>
+      <section class="zone"><div class="zone-h"><h2>Check-in queue</h2><span class="cap">${S.rec.length}/${RECMAX}</span><span class="note">Sort by color: red first.</span></div>
+      ${slots([...S.rec].sort((a,b)=>'ryg'.indexOf(cond(S.P[a]).p)-'ryg'.indexOf(cond(S.P[b]).p)),RECMAX,'Desk')}</section>`;
+  } else {
+    const d=DEPT[v],D=S.depts[v];
+    if(!D.on){
+      const ex=EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v)).map(x=>EXAMS[x].name);
+      const tr=CONDS.filter(c=>c.t.includes(v)).map(c=>c.n);
+      h+=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1><p>Locked</p></div></div></div>
+       <div class="locked-view"><p>${d.kind==='pharm'?'Treated patients come here for medication. You choose what to dispense and earn on every correct item.':d.kind==='path'?'Patients who die are brought here. A pathologist can perform an autopsy to find the cause of death for a county fee.':''}
+       ${ex.length?`<b>Tests:</b> ${esc(ex.join(', '))}.`:''}</p>${tr.length?`<p><b>Treats:</b> ${esc(tr.join(', '))}.</p>`:''}
+       <div><button class="btn primary" data-act="unlock" data-d="${v}" ${S.money<d.cost?'disabled':''}>Unlock for ${fmt$(d.cost)}</button></div></div>`;
+    } else {
+      const role=leadRole(v);
+      h+=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
+        <p>${D.lead?`${busyCount(v)} of ${D.lead} ${role[0].toLowerCase()} busy`:`<span class="pr-r">No ${role[0].toLowerCase()} on staff. Hire one to start work.</span>`}</p></div></div>
+        <div class="staffrow">
+         <div class="staff"><span class="role">${role[0]}</span><button data-act="fire" data-d="${v}" data-r="lead" ${D.lead?'':'disabled'} aria-label="Let one go">−</button><b>${D.lead}</b><button data-act="hire" data-d="${v}" data-r="lead" ${S.money<role[1]?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(role[1])}/day</span></div>
+         ${d.kind==='clinic'?`<div class="staff"><span class="role">Nurses</span><button data-act="fire" data-d="${v}" data-r="nurse" ${D.nurse?'':'disabled'} aria-label="Let one go">−</button><b>${D.nurse}</b><button data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(NURSE_PAY)}/day · −10% test time each</span></div>`:''}
+        </div></div>`;
+      const ex=EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v));
+      if(d.kind!=='pharm'&&d.kind!=='path')h+=`<div class="tests"><span>Tests here:</span>${d.kind==='clinic'?'<span class="chip">Basic exams</span>':''}${ex.map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div>`;
+      if(d.kind==='path'){
+        h+=`<section class="zone"><div class="zone-h"><h2>Morgue</h2><span class="cap">${S.morgue.length}/${QMAX}</span><span class="note">Urgent patients who run out of time end up here.</span></div>${slots(S.morgue,QMAX,'Drawer')}</section>`;
+      } else {
+        h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Bed')}</section>
+        <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a bed opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
+      }
+    }
+  }
+  h+=logHTML();
+  m.innerHTML=h;
+}
+
+function bookHTML(){
+  const q=bookQ.trim().toLowerCase();let known=0,h='';
+  DEPTS.forEach(d=>{const list=CONDS.filter(c=>c.d===d.id).sort((a,b)=>a.n.localeCompare(b.n));if(!list.length)return;
+    let cards='';list.forEach(c=>{const k=BOOK[c.n];if(k)known++;
+      if(q){const hay=(k?[c.n,...c.F.map(f=>f.l+' '+EXAMS[f.x].name),c.tx[0]].join(' '):'').toLowerCase();if(!hay.includes(q))return}
+      if(!k){cards+=`<div class="case unk"><div class="case-h"><span class="tri ${c.p}"></span><b>Undiscovered case</b></div><span class="empty-note">Confirm it in a patient to unlock.</span></div>`;return}
+      cards+=`<article class="case"><div class="case-h"><span class="tri ${c.p}"></span><b class="pr-${c.p}">${esc(c.n)}</b><span class="mono seen">seen ${k}×</span></div>
+        <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
+        <dl><dt>Treated in</dt><dd>${esc(c.t.map(t=>DEPT[t].name).join(', '))}</dd>
+        <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}</dd>
+        <dt>Prescription</dt><dd>${esc(c.rx.map(r=>MEDS[r].name).join(', '))}</dd></dl></article>`});
+    if(cards)h+=`<section class="zone"><div class="zone-h"><h2>${esc(d.name)}</h2></div><div class="cases">${cards}</div></section>`});
+  setTimeout(()=>{const el=document.getElementById('bookCount');if(el)el.textContent=`${known} of ${CONDS.length} discovered`},0);
+  return h||`<p class="empty-note">No discovered cases match “${esc(bookQ)}”.</p>`;
+}
+function chartHTML(p){
+  const c=cond(p);const L=p.loc;const dk=DEPT[L]?DEPT[L].kind:L;
+  let h=`<div class="ch-head"><div class="clip"><div><h2 class="pr-${c.p}">${esc(pname(p))}</h2>
+   <div class="sub">${p.age} · ${p.sex==='f'?'Female':'Male'} · ${esc(p.ins)} <span class="mono">(collects ${Math.round(p.cov*100)}% of charges)</span></div></div>
+   <button class="xbtn" data-act="close" aria-label="Close chart">×</button></div>
+   <div class="tags"><span class="tag ${c.p}">${PRIO[c.p]}</span><span class="tag">${esc(locName(L))}${p.inW?' · waiting room':''}</span>
+   ${p.deadline?`<span class="tag mono ${c.p}" data-dlt="${p.id}"></span>`:''}</div></div>`;
+
+  if(L==='morgue'){
+    h+=`<div class="sec"><h3>Recorded complaint</h3><ul class="findings">${c.F.filter(f=>f.pres).map(f=>`<li>${esc(f.l)}</li>`).join('')}</ul></div>`;
+    if(p.busy)h+=busyBox(p);
+    else if(p.autopsy)h+=`<div class="sec"><div class="callout"><b>Cause of death:</b> ${esc(c.n)}. Treated in ${esc(c.t.map(t=>DEPT[t].name).join(' or '))}.</div>
+      <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
+      <button class="btn" data-act="release">Release body</button></div>`;
+    else h+=`<div class="sec"><button class="btn primary" data-act="autopsy" ${canWork('path')?'':'disabled'}>Perform autopsy · 30 min</button>
+      ${S.depts.path.lead?'':'<span class="empty-note">Hire a pathologist first.</span>'}</div>`;
+    return h;
+  }
+
+  if(L==='pharm'){
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}</div></div>
+     <div class="sec"><h3>Dispense medication <span>pick what they need</span></h3><div class="meds">`;
+    ['OTC','Rx'].forEach(t=>{h+=`<div class="medgroup">${t==='OTC'?'Over the counter':'Prescription'}</div>`;
+      Object.values(MEDS).filter(m=>m.type===t).sort((a,b)=>a.name.localeCompare(b.name)).forEach(m=>{
+        h+=`<label class="med"><input type="checkbox" id="med-${m.id}" value="${m.id}"><span class="mn">${esc(m.name)}</span><span class="mt">${t}</span><span class="mp">${fmt$(m.price)}</span></label>`})});
+    h+=`</div><div class="line" style="display:flex;gap:6px;flex-wrap:wrap">
+     <button class="btn primary" data-act="dispense" ${S.depts.pharm.lead?'':'disabled'}>Dispense</button>
+     <button class="btn" data-act="paper">Discharge with paper script</button></div>
+     ${S.depts.pharm.lead?'':'<span class="empty-note">Hire a pharmacist to dispense.</span>'}</div>`;
+    return h;
+  }
+
+  // findings
+  const tot=c.F.length,got=p.rev.length;
+  h+=`<div class="sec"><h3>Findings <span>${got} of ${tot} uncovered</span></h3>
+   <div class="cert"><span class="bar"><i style="width:${Math.round(got/tot*100)}%"></i></span><span class="mono">${Math.round(got/tot*100)}%</span></div>
+   <ul class="findings">${p.rev.map(i=>c.F[i]).map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}
+   ${tot-got?`<li class="hid">${tot-got} more finding${tot-got>1?'s':''} hidden. Run the right tests.</li>`:''}</ul></div>`;
+
+  const done=Object.keys(p.res);
+  if(done.length)h+=`<div class="sec"><h3>Test results</h3><div class="results">${done.map(x=>`<div class="res ${p.res[x]?'pos':''}"><b>${esc(EXAMS[x].name)}</b>${p.res[x]?esc(p.res[x].join('; ')):esc(EXAMS[x].norm)}</div>`).join('')}</div></div>`;
+
+  if(p.busy)h+=busyBox(p);
+
+  if(p.dx===p.c){
+    const here=c.t.includes(L);
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${c.tx[1]} min · ${fmt$(c.tx[2])}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
+     ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Start treatment</button>${!canWork(L)&&!p.busy?`<span class="empty-note">All ${leadRole(L)[0].toLowerCase()} are busy.</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
+  }
+
+  // exams here
+  if(L!=='rec'&&dk!=='pharm'){
+    const here=EXAM_ORDER.filter(x=>examHere(x,L));
+    h+=`<div class="sec"><h3>Run a test here <span>${canWork(L)?'':S.depts[L].lead?'staff busy':'no staff'}</span></h3>
+     ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a bed opens.</div>':''}
+     <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
+      return `<button class="exam ${dn?'done':''}" data-act="exam" data-x="${x}" ${dn||p.busy||p.inW||!canWork(L)?'disabled':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${dur(e.min,L)} min · ${fmt$(e.cost)}</span></button>`}).join('')}</div></div>`;
+  }
+  // elsewhere
+  const away={};EXAM_ORDER.forEach(x=>{if(x in p.res||examHere(x,L))return;const e=EXAMS[x];if(e.depts==='basic'){(away.er=away.er||[]).push(e.name);return}
+    const d=e.depts.find(dd=>S.depts[dd].on)||e.depts[0];(away[d]=away[d]||[]).push(e.name)});
+  const awayKeys=Object.keys(away);
+  if(awayKeys.length)h+=`<div class="sec"><h3>Tests in other departments</h3><div class="elsewhere">${awayKeys.map(d=>`<div><b>${esc(DEPT[d].name)}${S.depts[d].on?'':' 🔒'}</b> · ${esc(away[d].join(', '))}</div>`).join('')}</div></div>`;
+
+  // actions
+  const opts=DEPTS.filter(d=>S.depts[d.id].on&&d.id!==L&&(d.kind==='clinic'||d.kind==='diag')).map(d=>{const D=S.depts[d.id];const full=!space(d.id);
+    return `<option value="${d.id}" ${full?'disabled':''}>${esc(d.name)} — ${D.q.length}/${QMAX}${D.w.length?` +${D.w.length} waiting`:''}${full?' (full)':''}</option>`}).join('');
+  h+=`<div class="sec"><h3>Decide</h3><div class="act">`;
+  if(p.from&&S.depts[p.from]&&S.depts[p.from].on&&p.from!==L)h+=`<button class="btn" data-act="return" ${p.busy||!space(p.from)?'disabled':''}>↩ Return to ${esc(DEPT[p.from].name)}</button>`;
+  h+=`<label for="sendTo">Send to department</label><div class="line"><select id="sendTo"><option value="">Choose…</option>${opts}</select><button class="btn" data-act="send" ${p.busy?'disabled':''}>Send</button></div>`;
+  if(dk==='clinic'&&p.dx!==p.c){
+    const groups={};CONDS.forEach((cc,i)=>{(groups[cc.d]=groups[cc.d]||[]).push([cc.n,i])});
+    h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy?'disabled':''}>Confirm</button></div>`;
+  } else if(L==='rec')h+=`<span class="empty-note">Tests and diagnosis happen once they're in a department.</span>`;
+  else if(dk==='diag')h+=`<span class="empty-note">Diagnostic departments run tests only. Send them back to a ward to diagnose.</span>`;
+  const canStab=['er','icu'].includes(L)&&p.deadline&&c.p==='r'&&p.stab<2;
+  h+=`<div class="line" style="flex-wrap:wrap">${canStab?`<button class="btn" data-act="stab" ${!p.busy&&!p.inW&&canWork(L)?'':'disabled'}>Stabilize (+25 min, $400)</button>`:''}
+     <button class="btn danger" data-act="xfer" ${p.busy?'disabled':''}>Transfer to another hospital</button></div></div>
+   <div class="bill"><span>Charges so far</span><b>${fmt$(p.bill)} → you collect ${fmt$(p.bill*p.cov)}</b></div></div>`;
+  return h;
+}
+function busyBox(p){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?cond(p).tx[0]:p.busy.k==='stab'?'Stabilizing: IV fluids, oxygen, monitoring':'Autopsy';
+  return `<div class="sec"><div class="busybox"><b>${esc(lbl)}</b><span class="bar busy"><i data-bar="${p.id}"></i></span><span class="mono" data-bzt="${p.id}"></span></div></div>`}
+
+function renderChart(){
+  const el=document.getElementById('chart');const p=S.pid&&S.P[S.pid];
+  document.getElementById('bodyGrid').classList.toggle('has-chart',!!p);
+  if(!p){el.hidden=true;el.innerHTML='';chartKey=null;return}
+  const ae=document.activeElement;
+  if(chartKey===p.id&&ae&&el.contains(ae)&&ae.tagName==='SELECT'){chartPending=true;return}
+  const keep={};el.querySelectorAll('select,input[type=checkbox]').forEach(i=>keep[i.id]=i.type==='checkbox'?i.checked:i.value);
+  const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;
+  if(chartKey===p.id){for(const k in keep){const i=document.getElementById(k);if(!i)continue;
+    if(i.type==='checkbox')i.checked=keep[k];else if([...i.options].some(o=>o.value===keep[k]&&!o.disabled))i.value=keep[k]}el.scrollTop=sc}
+  chartKey=p.id;chartPending=false;
+}
+function renderTop(){
+  document.getElementById('hn').textContent=S.name;
+  document.querySelectorAll('#speed button').forEach(b=>b.classList.toggle('on',+b.dataset.s===S.speed));
+}
+function tickUI(){
+  document.getElementById('clock').textContent=clockStr(S.t);
+  const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
+  document.getElementById('rep').textContent=`${Math.round(S.rep)} / 100`;
+  document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':`${Math.max(0,Math.ceil(S.next-S.t))} min`;
+  document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
+    if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
+    else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
+  document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
+    el.textContent=el.classList.contains('tag')?`${cond(p).p==='r'?'Critical in':'Leaves in'} ${r} min`:`${r} min`;el.classList.toggle('urgent',r<=10)});
+  document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${Math.max(0,Math.ceil(p.busy.end-S.t))} min left`});
+}
+function render(){
+  if(!S){document.getElementById('app').hidden=true;document.getElementById('setup').hidden=false;return}
+  document.getElementById('setup').hidden=true;document.getElementById('app').hidden=false;
+  renderTop();renderSide();renderMain();renderChart();tickUI();dirty=false;
+}
+
+/* ================= EVENTS ================= */
+let confirmNew=0;
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b||!S||b.disabled)return;const a=b.dataset.act;const p=S.pid&&S.P[S.pid];
+  switch(a){
+    case 'view':S.view=b.dataset.v;break;
+    case 'pt':S.pid=b.dataset.pid;break;
+    case 'close':S.pid=null;break;
+    case 'speed':S.speed=+b.dataset.s;break;
+    case 'exam':p&&startExam(p,b.dataset.x);break;
+    case 'treat':p&&startTreat(p);break;
+    case 'stab':p&&startStab(p);break;
+    case 'autopsy':p&&startAutopsy(p);break;
+    case 'release':p&&gone(p);break;
+    case 'xfer':p&&transfer(p);break;
+    case 'return':p&&p.from&&sendTo(p,p.from);break;
+    case 'send':{const d=document.getElementById('sendTo').value;if(!d){toast('Choose a department first.');return}const fromRec=p.loc==='rec';sendTo(p,d);
+      if(p.loc===d){toast(`${p.first} sent to ${DEPT[d].name}${p.inW?' (waiting room)':''}.`);if(fromRec)S.pid=null}break}
+    case 'dx':{const v=document.getElementById('dxPick').value;if(v===''){toast('Choose a diagnosis first.');return}diagnose(p,+v);break}
+    case 'dispense':{const ids=[...document.querySelectorAll('#chart .med input:checked')].map(i=>i.value);if(!ids.length){toast('Tick at least one medication.');return}dispense(p,ids);break}
+    case 'paper':log(`${pname(p)} discharged with a paper prescription.`);gone(p);break;
+    case 'unlock':{const d=DEPT[b.dataset.d];if(S.money<d.cost)return;S.money-=d.cost;S.depts[d.id].on=true;S.view=d.id;log(`${d.name} unlocked for ${fmt$(d.cost)}. Hire staff to open it.`,'good');toast(`${d.name} unlocked. Hire ${leadRole(d.id)[0].toLowerCase()} to start.`,'good');break}
+    case 'hire':{const d=b.dataset.d,r=b.dataset.r;const cost=r==='lead'?leadRole(d)[1]:NURSE_PAY;if(S.money<cost)return;S.money-=cost;S.depts[d][r]++;break}
+    case 'fire':{const d=b.dataset.d,r=b.dataset.r;const D=S.depts[d];if(!D[r])return;if(r==='lead'&&busyCount(d)>=D.lead){toast('Everyone is mid-procedure. Wait until someone is free.');return}D[r]--;break}
+    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){S=null;try{localStorage.removeItem(KEY)}catch(e){}nb.textContent='New game';render();return}
+      confirmNew=Date.now();nb.textContent='Tap again to reset';setTimeout(()=>{nb.textContent='New game'},3000);return}
+  }
+  dirty=true;render();
+});
+document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
+document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
+document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
+
+/* ================= LOOP ================= */
+let saveAt=0;
+function loop(){
+  const now=performance.now();let dtReal=Math.min(now-lastReal,2000);lastReal=now;
+  if(S&&S.speed){step(dtReal/MS_PER_MIN*S.speed)}
+  if(S){if(dirty)render();else tickUI();if(now-saveAt>3000){save();saveAt=now}}
+}
+function start(data){
+  S=(data&&data.state)||load();
+  if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]}});
+  render();setInterval(loop,200);
+}
+window.claude?.hot?.snapshot?.(()=>({state:S}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+
+</body>
+</html>
