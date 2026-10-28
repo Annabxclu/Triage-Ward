@@ -29,6 +29,10 @@ About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, 
 ## ICU and collapses
 Urgent patients left waiting can **collapse**: a red alert bar names the patient and where they are, the department gets a ⚠ badge, and they have 15 minutes. The **ICU** has no queue or rooms, just beds (10 to start, more for $5,000 each). A patient in an ICU bed is stable, so their clock stops (the only place it does) while ICU nurses and doctors work them up, and ICU-treated conditions recover in the same bed.
 
+## Sound
+
+A soft chime plays whenever a new patient arrives; red patients get a quicker three-note alert. The speaker button next to the hospital name turns it off or on, and the choice is remembered.
+
 ## Saving and pausing
 The game saves itself to your browser every few seconds. Switching tabs, minimizing, locking your screen or closing the page pauses the hospital; it resumes when you come back. Saves live in each browser separately, so the Claude version and the GitHub version keep separate hospitals.
 

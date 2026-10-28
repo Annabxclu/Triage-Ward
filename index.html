@@ -78,6 +78,9 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .speed{display:flex;border:1px solid var(--band-line);border-radius:6px;overflow:hidden}
 .speed button{background:transparent;border:0;color:var(--band-muted);padding:6px 10px;font-family:var(--f-mono);font-size:13px}
 .speed button.on{background:var(--accent);color:var(--accent-ink)}
+.sndbtn{border:1px solid rgba(255,255,255,.18);background:transparent;color:var(--band-ink);border-radius:6px;width:32px;height:32px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none}
+.sndbtn:hover{border-color:var(--accent)}
+.sndbtn .mute{display:none}.sndbtn.off .mute{display:inline}.sndbtn.off .wave{display:none}.sndbtn.off{color:var(--band-muted)}
 .top .menu.off{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
 .top .menu.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .top .menu{background:transparent;border:1px solid var(--band-line);color:var(--band-muted);border-radius:6px;padding:6px 10px;font-size:13px}
@@ -468,7 +471,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 
 <div class="app" id="app" hidden>
   <header class="top">
-    <div class="hname"><span class="cross" aria-hidden="true"></span><span class="t" id="hn"></span></div>
+    <div class="hname"><span class="cross" aria-hidden="true"></span><span class="t" id="hn"></span><button class="sndbtn" data-act="sound" id="soundBtn" aria-pressed="true" title="Arrival sound on" aria-label="Arrival sound on"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path class="wave" d="M16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="mute" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
     <div class="meters">
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
@@ -1505,6 +1508,17 @@ function apptTick(){const C=S.depts.clinic;if(!C||!C.on){S.appts=[];S.apptBlk=nu
     if(p&&p.loc==='clinic'){p.appt=a.at;p.v++}else{if(p)gone(p);S.st.away++;log('A patient missed their clinic appointment because the clinic queue was full.','warn')}}}
 function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='clinic';
   const order=[c.d,...c.t,'er'].filter((d,i,a)=>a.indexOf(d)===i&&ok(d));for(const d of order)if(space(d,p||{triaged:false}))return d;return null}
+/* arrival sound: soft two-note chime, a quicker three-note alert for red patients */
+let soundOn=true;try{soundOn=localStorage.getItem('hospital-sound')!=='0'}catch(e){}
+let actx=null,lastChime=0,chimeQ=null;
+function chime(pr){if(!soundOn)return;const now=performance.now();if(now-lastChime<400){if(pr==='r')chimeQ='r';return}lastChime=now;
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();
+    const notes=pr==='r'?[[880,0],[880,.16],[1175,.32]]:[[660,0],[880,.14]];const t0=actx.currentTime+.02;
+    notes.forEach(([fq,dt])=>{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=fq;
+      g.gain.setValueAtTime(0,t0+dt);g.gain.linearRampToValueAtTime(pr==='r'?.22:.16,t0+dt+.02);g.gain.exponentialRampToValueAtTime(.001,t0+dt+.35);
+      o.connect(g).connect(actx.destination);o.start(t0+dt);o.stop(t0+dt+.4)})}catch(e){}}
+function soundUI(){const b=document.getElementById('soundBtn');if(!b)return;b.setAttribute('aria-pressed',soundOn?'true':'false');b.classList.toggle('off',!soundOn);
+  const l=soundOn?'Arrival sound on':'Arrival sound off';b.title=l;b.setAttribute('aria-label',l)}
 function arrive(force){
   const pool=CONDS.filter(c=>!c.appt&&c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>{const e=evtNow();return (c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)*(e&&e.set&&e.set.has(c.n)?8:1)}));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
@@ -1515,7 +1529,7 @@ function arrive(force){
     arr:S.t,deadline:S.t+PAT[c.p],span:PAT[c.p],busy:null,dx:null,bill:0,stab:0,from:null,v:0};
   const dest=routeDept(c,p);
   if(!dest){S.st.away++;dirty=true;return}
-  S.P[id]=p;addTo(p,dest);dirty=true;
+  S.P[id]=p;addTo(p,dest);dirty=true;chime(c.p);
   if(c.p==='r')log(`${pname(p)} arrived at ${DEPT[dest].name}: urgent.`,'bad');
 }
 
@@ -2209,6 +2223,7 @@ document.addEventListener('click',e=>{
     case 'addicubed':{const D=S.depts.icu;if(S.money<ICU_BED_COST||D.beds>=ICU_MAX)return;S.money-=ICU_BED_COST;D.beds++;toast('ICU bed added.');break}
     case 'rushicu':{if(!p)return;sendTo(p,'icu');if(p.loc==='icu'){toast(`${p.first} rushed to the ICU.`,'good');S.view='icu'}break}
     case 'goto':{const q=S.P[b.dataset.pid];if(!q)return;S.view=q.loc==='rec'?'rec':q.loc;S.pid=q.id;break}
+    case 'sound':soundOn=!soundOn;try{localStorage.setItem('hospital-sound',soundOn?'1':'0')}catch(e){}soundUI();if(soundOn){lastChime=0;chime('g')}toast(soundOn?'Arrival sound on':'Arrival sound off');break;
     case 'pause':S.speed=S.speed?0:1;break;
     case 'stall':{DEPTS.forEach(d=>{const k='st:'+d.id;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'rgtoggle':{const k=b.dataset.k;if(staffShut.has(k))staffShut.delete(k);else staffShut.add(k);try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
@@ -2265,7 +2280,7 @@ function start(data){
       mv.forEach(id=>{const p=S.P[id];if(!p)return;I.dxr.push(id);p.stage='icu';p.nurse=null;p.doc=p.doc||null;p.inW=false});(I.dxr||[]).forEach(id=>{if(S.P[id])S.P[id].stage='icu'})}}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
   if(S){if(S.view==='rec')S.view='er';(S.rec||[]).slice().forEach(id=>{const p=S.P[id];S.rec=S.rec.filter(x=>x!==id);if(!p)return;const d=routeDept(cond(p),p);if(d){p.loc='x';addTo(p,d)}else delete S.P[id]})}
-  render();setInterval(loop,200);
+  render();soundUI();setInterval(loop,200);
 }
 window.claude?.hot?.snapshot?.(()=>({state:S}));
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
