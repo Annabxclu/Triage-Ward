@@ -1069,7 +1069,7 @@ function chartHTML(p){
     const order=['lab','rad'].filter(d=>groups[d]);
     h+=`<div class="sec"><h3>Doctor orders <span>${ord.length?`${ord.length} ordered`:'Lab and Radiology · tap to order'}</span></h3>
      <div class="orders">${order.map(d=>`<div class="ogrp"><div class="oh">${esc(DEPT[d].name)}${S.depts[d].on?'':' · locked'}</div><div class="examgrid">${groups[d].map(x=>{const on=ord.includes(x);
-       return `<button class="exam ${on?'queued':''}" data-act="order" data-x="${x}" ${on?'aria-pressed="true"':''}><span class="en">${on?'✓ ':''}${esc(EXAMS[x].name)} — ${esc(DEPT[d].name)}</span><span class="ec">${on?'Ordered · tap to cancel':`${fmtDur(EXAMS[x].min)} · ${fmt$(EXAMS[x].cost)}`}</span></button>`}).join('')}</div></div>`).join('')}</div></div>`}
+       return `<button class="exam ${on?'queued':''}" data-act="order" data-x="${x}" ${on?'aria-pressed="true"':''}><span class="en">${on?'✓ ':''}${esc(EXAMS[x].name)}</span><span class="ec">${on?'Ordered · tap to cancel':`${fmtDur(EXAMS[x].min)} · ${fmt$(EXAMS[x].cost)}`}</span></button>`}).join('')}</div></div>`).join('')}</div></div>`}
 
   // actions
   const opts=DEPTS.filter(d=>S.depts[d.id].on&&d.id!==L&&(d.kind==='clinic'||d.kind==='diag')).map(d=>{const D=S.depts[d.id];const full=!space(d.id,p);const oc=ordersHere(p,d.id).length;
