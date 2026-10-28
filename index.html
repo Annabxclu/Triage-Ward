@@ -92,6 +92,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .navi.locked .badge{background:var(--panel2);color:var(--muted)}
 .navi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .navi .ct{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.navi .ct .idle{color:var(--accent);font-weight:700}
 .navi .redct{font-family:var(--f-mono);font-size:11px;color:var(--red);font-weight:600}
 .navi.locked .nm{color:var(--muted)}
 .unlock{border:1px solid var(--line);background:var(--panel);border-radius:4px;font-family:var(--f-mono);font-size:11px;padding:2px 6px}
@@ -1256,9 +1257,11 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function locName(l){return l==='rec'?'Reception':l==='morgue'?'Morgue':DEPT[l]?DEPT[l].name:l}
 
 let testCond='';
+/* a patient needs the player when nothing is running for them */
+function needsAction(p){if(p.busy)return false;if(p.adm)return !!p.adm.ready;if(p.tq&&p.tq.length&&canRun(p))return false;return true}
 function renderSide(){
   const ae=document.activeElement;if(ae&&ae.id==='testCond')return;
-  const on=DEPTS.filter(d=>S.depts[d.id].on), off=DEPTS.filter(d=>!S.depts[d.id].on);
+  const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>a.id==='er'?-1:b.id==='er'?1:a.name.localeCompare(b.name)), off=DEPTS.filter(d=>!S.depts[d.id].on);
   const redIn=ids=>ids.filter(i=>S.P[i]&&cond(S.P[i]).p==='r'&&!S.P[i].treated).length;
   const colIn=ids=>ids.filter(i=>S.P[i]&&S.P[i].collapsed).length;
   const item=(id,code,name,count,hue,reds,cols)=>`<button class="navi ${S.view===id?'on':''}" data-act="view" data-v="${id}">
@@ -1274,7 +1277,7 @@ function renderSide(){
   h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec),colIn(S.rec));
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
-  on.forEach(d=>{const D=S.depts[d.id];const all=[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const n=d.kind==='path'?S.morgue.length:all.length;h+=item(d.id,d.code,d.name,n,d.hue,redIn(all),colIn(all))});
+  on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
   h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
@@ -1666,6 +1669,9 @@ document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefa
 
 /* ================= LOOP ================= */
 let saveAt=0;
+document.addEventListener('visibilitychange',()=>{if(!S)return;
+  if(document.hidden){if(S.speed){S.speed=0;S.autoPaused=true;save()}}
+  else if(S.autoPaused){S.autoPaused=false;S.speed=1;lastReal=performance.now();dirty=true;toast('Welcome back. Your hospital was paused while you were away.')}});
 function loop(){
   const now=performance.now();let dtReal=Math.min(now-lastReal,3600000);lastReal=now;
   if(S&&S.speed){step(dtReal/MS_PER_MIN*S.speed)}

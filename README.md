@@ -24,3 +24,6 @@ Click **Test mode** in the top bar to open test tools in the sidebar: add money,
 
 ## ICU and collapses
 Urgent patients left waiting can **collapse**: a red alert bar names the patient and where they are, the department gets a ⚠ badge, and they have 15 minutes. The **ICU** has no queue or rooms, just beds (10 to start, more for $5,000 each). A patient in an ICU bed is stable, so their clock stops (the only place it does) while ICU nurses and doctors work them up, and ICU-treated conditions recover in the same bed.
+
+## Saving and pausing
+The game saves itself to your browser every few seconds. Switching tabs, minimizing, locking your screen or closing the page pauses the hospital; it resumes when you come back. Saves live in each browser separately, so the Claude version and the GitHub version keep separate hospitals.
