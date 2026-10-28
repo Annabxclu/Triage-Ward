@@ -12,7 +12,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 5. Treat in a department that handles the condition, or transfer to another hospital. Bigger cases (surgery, heart attacks, strokes, sepsis, labor…) then recover in that department's recovery beds; discharge them when the stay ends to collect room charges.
 6. With a Pharmacy open, choose the right OTC and prescription meds.
 
-Every confirmed case goes into the **Casebook** with its findings, tests, treatment and standard prescription.
+Every confirmed case goes into the **Casebook** with its findings, tests, treatment and standard prescription. Starting a new game clears it.
 
 Insurance plans and patient names are fictional. Medical content is simplified for gameplay and is not medical advice.
 

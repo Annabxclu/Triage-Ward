@@ -1869,7 +1869,7 @@ function renderMain(){
   if(v==='pts'){mainMode='pts';m.innerHTML=patientsHTML()+logHTML();return}
   if(v==='book'){
     if(mainMode!=='book'){m.innerHTML=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:280">BOOK</span><div><h1>Casebook</h1>
-      <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. It stays in this browser across new games.</p></div></div></div>
+      <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. Starting a new game clears it.</p></div></div></div>
       <div class="bookbar"><label for="bookQ" class="sr">Search cases</label><input id="bookQ" type="search" placeholder="Search by condition, symptom or test…" value="${esc(bookQ)}"><span class="cap mono" id="bookCount"></span><button class="btn sm" data-act="bookall" data-v="1">Expand all</button><button class="btn sm" data-act="bookall" data-v="0">Collapse all</button></div>
       <div id="bookList"></div>`;mainMode='book';bookKey=null}
     const key=bookV+'|'+bookQ;if(key!==bookKey){bookKey=key;document.getElementById('bookList').innerHTML=bookHTML()}
@@ -2132,7 +2132,7 @@ document.addEventListener('click',e=>{
     case 'assign':p&&assignStaff(p,b.dataset.s);break;
     case 'addroom':{const D=S.depts[b.dataset.d||'er'],k=b.dataset.k==='tri'?'triRooms':'dxRooms';if(S.money<ROOM_COST||D[k]>=ROOMMAX)return;S.money-=ROOM_COST;D[k]++;toast(`${b.dataset.k==='tri'?'Triage':'Diagnostic'} room added.`);break}
     case 'fire':{const d=b.dataset.d,r=b.dataset.r;const D=S.depts[d];if(!D[r])return;if(r==='lead'&&busyCount(d)>=D.lead){toast('Everyone is mid-procedure. Wait until someone is free.');return}D[r]--;break}
-    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){S=null;try{localStorage.removeItem(KEY)}catch(e){}nb.textContent='New game';render();return}
+    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){S=null;BOOK={};bookV++;bookKey=null;try{localStorage.removeItem(KEY);localStorage.removeItem(BOOKKEY)}catch(e){}nb.textContent='New game';render();return}
       confirmNew=Date.now();nb.textContent='Tap again to reset';setTimeout(()=>{nb.textContent='New game'},3000);return}
   }
   autoAssign();dirty=true;render();
