@@ -452,7 +452,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Patients</small><b id="ptCount">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
-      <button class="menu" data-act="intake" id="intakeBtn" title="Stop or start new patients arriving">Intake on</button>
+      <button class="menu" data-act="intake" id="intakeBtn" title="Stop or start walk-in patients (clinic appointments still arrive)">Intake on</button>
       <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
     </div>
@@ -1662,8 +1662,8 @@ function autoAssign(){if(!S)return;const ps=Object.values(S.P).sort((a,b)=>'ryg'
 function step(dt){
   S.t+=dt;
   evtTick();
-  if(S.intakeOff){S.next+=dt;(S.appts||[]).forEach(a=>a.at+=dt)} /* intake off: arrival and appointment timers freeze */
-  else apptTick();
+  apptTick(); /* clinic appointments always keep coming */
+  if(S.intakeOff)S.next+=dt; /* intake off: walk-in timer freezes */
   while(!S.intakeOff&&S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
   if(today!==S.payDate){S.payDate=today}
@@ -2111,7 +2111,7 @@ document.addEventListener('click',e=>{
     case 'goto':{const q=S.P[b.dataset.pid];if(!q)return;S.view=q.loc==='rec'?'rec':q.loc;S.pid=q.id;break}
     case 'pause':S.speed=S.speed?0:1;break;
     case 'rgtoggle':{const k=b.dataset.k;if(staffShut.has(k))staffShut.delete(k);else staffShut.add(k);try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
-    case 'intake':S.intakeOff=!S.intakeOff;log(S.intakeOff?'Intake closed. No new patients will arrive until you turn it back on.':'Intake reopened. Patients are arriving again.',S.intakeOff?'warn':'good');toast(S.intakeOff?'Intake off: no new arrivals':'Intake on');break;
+    case 'intake':S.intakeOff=!S.intakeOff;log(S.intakeOff?'Walk-in intake closed. Clinic appointments still arrive.':'Walk-in intake reopened.',S.intakeOff?'warn':'good');toast(S.intakeOff?'Intake off: no walk-ins (appointments still arrive)':'Intake on');break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'order':{if(!p)return;const x=b.dataset.x;p.orders=p.orders||[];const i=p.orders.indexOf(x);if(i>=0)p.orders.splice(i,1);else p.orders.push(x);p.v++;break}
     case 'treat':p&&startTreat(p);break;
