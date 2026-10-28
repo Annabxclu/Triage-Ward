@@ -473,7 +473,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <input id="hospName" maxlength="40" value="Mercy Ridge General" autocomplete="off">
       </div>
       <ul>
-        <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
+        <li>You open with a free Emergency Room (one doctor, one nurse), plus a Pharmacy, Laboratory and Radiology with one staff member each. Every other department must be bought.</li>
         <li>Walk-ins arrive at random: about 100 per game day to start, more as you accept new insurance plans. Each goes straight to the department for their condition.</li>
         <li>Red patients have 1 real hour, yellow 2 hours, green 3 hours. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
@@ -1503,8 +1503,10 @@ function fresh(name){
   S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:0,depts,rec:[],morgue:[],P:{},seq:1,log:[],
      st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'er',pid:null};
   erInit();insInit();S.next=nextGap();
+  /* Pharmacy, Laboratory and Radiology are open from the start with one staff member each */
+  S.depts.pharm.on=true;S.depts.pharm.lead=1;S.depts.lab.on=true;S.depts.rad.on=true;hireNamed('labtech','lab');hireNamed('radtech','rad');
   arrive();
-  log(`${name} opened its doors. The ER is staffed and ready.`,'good');
+  log(`${name} opened its doors. The ER, Pharmacy, Laboratory and Radiology are staffed and ready.`,'good');
 }
 function save(){try{if(S)localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}return null}
@@ -1711,8 +1713,16 @@ function startAutopsy(p){
   if(p.busy||p.autopsy||!canWork('path'))return;
   p.busy={k:'autopsy',d:'path',start:S.t,end:S.t+dur(30,'path')};p.v++;dirty=true;
 }
+/* a diagnosis needs evidence: half the case's findings, at least one from an exam or test, plus a lab or imaging result if the case has one */
+const isLR=x=>{const d=EXAMS[x]&&EXAMS[x].depts;return Array.isArray(d)&&(d.includes('lab')||d.includes('rad'))};
+function evidence(p){const c=cond(p),tot=c.F.length,need=Math.ceil(tot/2),got=p.rev.length;
+  const hasLR=c.F.some(f=>isLR(f.x)),gotLR=p.rev.some(i=>isLR(c.F[i].x));
+  const hasT=c.F.some(f=>!f.pres),gotT=p.rev.some(i=>!c.F[i].pres);
+  const miss=[];if(got<need)miss.push(`uncover at least ${need} of ${tot} findings (${got} so far)`);if(hasT&&!gotT&&!(hasLR&&!gotLR))miss.push('uncover a finding from an exam or test');if(hasLR&&!gotLR)miss.push('get a lab or imaging result');
+  return {ok:!miss.length,miss}}
 function diagnose(p,ci){
   if(isFlow(p.loc)&&!(p.stage==='dx'&&p.doc))return;
+  {const ev=evidence(p);if(!ev.ok){toast(`Not enough evidence yet: ${ev.miss.join(' and ')}.`,'warn');return}}
   const c=cond(p);
   if(ci===p.c){S.st.streak=(S.st.streak||0)+1;S.st.bestStreak=Math.max(S.st.bestStreak||0,S.st.streak);p.dx=ci;rep(1);learn(c);p.v++;dirty=true;log(`Correct diagnosis: ${pname(p)} has ${c.n}.`,'good');toast(`Correct: ${c.n}`,'good');}
   else{S.st.misdx++;S.st.streak=0;rep(-5);learn(c);log(`Misdiagnosis: ${pname(p)} was told ${CONDS[ci].n} but had ${c.n}. They left unhappy.`,'bad');
@@ -1861,7 +1871,7 @@ function renderSide(){
    <li>New patients arrive straight in the ward for their condition. The name color is triage: red, yellow, green.</li>
    <li>In every ward: assign a triage room and a nurse for the first tests, then the waiting room or a diagnostic room with a doctor.</li>
    <li>Run tests to uncover findings. For imaging or blood work, tick Doctor orders, send the patient to Radiology or the Lab, assign a tech, then return them.</li>
-   <li>Pick the diagnosis. The chart's Likely diagnoses list shows the odds from what you've uncovered so far. A wrong guess sends the patient home without paying.</li>
+   <li>Pick the diagnosis. You need evidence first: at least half the patient's findings, at least one from an exam or test, plus a lab or imaging result if the case has one. The chart's Likely diagnoses list shows the odds so far. A wrong guess sends the patient home without paying.</li>
    <li>Treat in a department that handles that condition, or transfer them out. Bigger cases then need a recovery bed; discharge them when their stay ends.</li>
    <li>With a Pharmacy open, treated patients come to you for meds. Pick what a real doctor would prescribe.</li>
    <li>Red patients left waiting can collapse. A red alert bar appears; rush them to an ICU bed, where their clock stops.</li>
@@ -2209,7 +2219,7 @@ function chartHTML(p){
     const groups={};CONDS.forEach((cc,i)=>{(groups[cc.d]=groups[cc.d]||[]).push([cc.n,i])});
     const pct=i=>{const v=LK?LK[i]:0;return v>=.01?` — ${Math.round(v*100)}%`:''};
     const topI=LK?LK.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).filter(x=>x[0]>=.01).slice(0,5).map(x=>x[1]):[];
-    h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${topI.length?`<optgroup label="Most likely">${topI.map(i=>`<option value="${i}">${esc(CONDS[i].n)}${pct(i)}</option>`).join('')}</optgroup>`:''}${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}${pct(i)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy?'disabled':''}>Confirm</button></div>`;
+    h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${topI.length?`<optgroup label="Most likely">${topI.map(i=>`<option value="${i}">${esc(CONDS[i].n)}${pct(i)}</option>`).join('')}</optgroup>`:''}${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}${pct(i)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy||!evidence(p).ok?'disabled':''}>Confirm</button></div>${evidence(p).ok?'':`<span class="empty-note warnnote">Not enough evidence to confirm yet: ${esc(evidence(p).miss.join(' and '))}.</span>`}`;
   } else if(isFlow(L)&&p.dx!==p.c)h+=`<span class="empty-note">A doctor makes the diagnosis in a diagnostic room.</span>`;
   else if(L==='rec')h+=`<span class="empty-note">Tests and diagnosis happen once they're in a department.</span>`;
   else if(dk==='diag')h+=`<span class="empty-note">Diagnostic departments run tests only. Send them back to a ward to diagnose.</span>`;

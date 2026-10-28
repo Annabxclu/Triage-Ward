@@ -1,6 +1,6 @@
 # Triage Ward
 
-A browser hospital-management game. Name your hospital, open with a free Emergency Room, and grow into 24 departments.
+A browser hospital-management game. Name your hospital, open with a free Emergency Room, Pharmacy, Laboratory and Radiology, and grow into 24 departments.
 
 **Play:** https://annabxclu.github.io/Triage-Ward/ (once GitHub Pages is enabled)
 
@@ -8,7 +8,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 1. Walk-ins arrive at random, about 100 per game day to start (more as you accept insurance plans), straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 real hour), yellow (2 hours), green (3 hours).
 2. In every ward, assign a **triage room** and a named **nurse** for the first tests (vitals, ECG, swabs, urine and glucose checks), then move them to the **waiting room** or a **diagnostic room** where you assign a **doctor** to examine, diagnose and treat.
 3. Run real tests to uncover hidden findings. A doctor can place **Doctor orders** for tests in other departments (e.g. *Complete blood count — Laboratory*, *CT head — Radiology*). Send the patient there, assign a named lab tech or rad tech, and they run the orders before you return the patient.
-4. Pick the diagnosis from 600 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
+4. Pick the diagnosis from 600 real conditions. You need evidence first: at least half the patient's findings, at least one from an exam or test, and a lab or imaging result if the case has one. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
 5. Treat in a department that handles the condition, or transfer to another hospital. Bigger cases (surgery, heart attacks, strokes, sepsis, labor…) then recover in that department's recovery beds; discharge them when the stay ends to collect room charges.
 6. With a Pharmacy open, choose the right OTC and prescription meds.
 
