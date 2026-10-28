@@ -123,6 +123,8 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .tgl{width:46px;height:26px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);position:relative;flex:none;cursor:pointer;padding:0}
 .tgl span{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
 .tgl[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}.tgl[aria-checked="true"] span{left:22px}
+.acct{display:flex;align-items:center;gap:10px;margin:6px 0}.acct img{width:36px;height:36px;border-radius:50%}.acct div{display:flex;flex-direction:column}.acct span{font-size:12px;color:var(--muted)}
+.acctst{margin:4px 0 8px;font-size:13px;color:var(--muted)}
 .swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sw{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px 4px 4px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer}
 .sw span{width:20px;height:20px;border-radius:50%;background:var(--c);border:1px solid rgba(0,0,0,.15)}
@@ -519,6 +521,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 </div>
 <dialog id="settingsDlg" class="setdlg" aria-labelledby="setTitle">
   <div class="sethead"><h2 id="setTitle">Settings</h2><button class="btn sm" data-act="setclose" aria-label="Close settings">✕</button></div>
+  <section class="setrow col"><div><b>Account</b></div><div id="acctBox"></div></section>
   <section class="setrow"><div><b>Sandbox mode</b><p>Tools for trying things out: add money, unlock or staff every department, skip time, add any patient.</p></div><button class="tgl" data-act="testmode" id="testBtn" role="switch" aria-checked="false"><span></span></button></section>
   <section class="setrow"><div><b>Arrival sound</b><p>Chime when a new patient arrives. Red patients get a quicker alert.</p></div><button class="tgl" data-act="sound" id="soundTgl" role="switch" aria-checked="true"><span></span></button></section>
   <section class="setrow col"><div><b>Top bar color</b><p>Pick a color for the bar across the top of the screen.</p></div>
@@ -1529,7 +1532,43 @@ function fresh(name){
   arrive();
   log(`${name} opened its doors. The ER, Pharmacy, Laboratory and Radiology are staffed and ready.`,'good');
 }
-function save(){try{if(S)localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){if(applyingCloud)return;try{if(S){S.savedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(S))}}catch(e){}}
+/* ---------- cloud save: Google sign-in + Firestore (users/{uid}) ---------- */
+const FB_CFG={apiKey:"AIzaSyCOosi0L79li3jrCN0iz8r9ZPenkpTYE6w",authDomain:"triage-ward.firebaseapp.com",projectId:"triage-ward",storageBucket:"triage-ward.firebasestorage.app",messagingSenderId:"347982783285",appId:"1:347982783285:web:51be791710c701f16fe27c"};
+const FB_V='10.12.2';
+let fb=null,fbUser=null,fbErr='',cloudBusy=false,lastPush=0,lastPushedAt=0,applyingCloud=false,cloudMsg='';
+let DEVICE='';try{DEVICE=localStorage.getItem('hospital-device')||'';if(!DEVICE){DEVICE=Math.random().toString(36).slice(2,10);localStorage.setItem('hospital-device',DEVICE)}}catch(e){}
+async function fbImport(name){
+  const tries=[`https://www.gstatic.com/firebasejs/${FB_V}/firebase-${name}.js`,`https://cdn.jsdelivr.net/npm/firebase@${FB_V}/${name}/+esm`];
+  let err;for(const u of tries){try{return await import(u)}catch(e){err=e}}throw err}
+async function fbInit(){if(fb)return fb;
+  const [A,U,F]=await Promise.all([fbImport('app'),fbImport('auth'),fbImport('firestore')]);
+  const app=A.initializeApp(FB_CFG);fb={U,F,auth:U.getAuth(app),db:F.getFirestore(app)};
+  U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudUI();if(u)cloudOnSignIn()});return fb}
+function localSavedAt(){try{const s=localStorage.getItem(KEY);if(!s)return 0;return JSON.parse(s).savedAt||1}catch(e){return 0}}
+async function cloudPush(force){if(!fbUser||!fb||cloudBusy||applyingCloud)return;const st=localStorage.getItem(KEY);if(!st)return;const at=localSavedAt();if(!force&&at<=lastPushedAt)return;
+  cloudBusy=true;try{await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid),{state:st,book:localStorage.getItem(BOOKKEY)||'{}',updated:at,device:DEVICE,name:S?S.name:''});lastPushedAt=at;lastPush=Date.now();cloudMsg='';}
+  catch(e){cloudMsg='Could not save to your account: '+(e.code||e.message)}cloudBusy=false;cloudUI()}
+async function cloudOnSignIn(){if(!fbUser)return;cloudBusy=true;cloudUI();let snap;
+  try{snap=await fb.F.getDoc(fb.F.doc(fb.db,'users',fbUser.uid))}catch(e){cloudBusy=false;cloudMsg='Could not reach your account: '+(e.code||e.message);cloudUI();return}
+  cloudBusy=false;const r=snap.exists()?snap.data():null,loc=localSavedAt();
+  if(r&&r.state&&(r.updated||0)>loc&&r.device!==DEVICE||(r&&r.state&&!loc)){ /* the account has a newer game: load it */
+    applyingCloud=true;try{localStorage.setItem(KEY,r.state);localStorage.setItem(BOOKKEY,r.book||'{}')}catch(e){}
+    toast('Loaded your latest save from your account.','good');setTimeout(()=>location.reload(),600);return}
+  if(loc)cloudPush(true);else cloudUI()}
+async function cloudSignIn(){cloudMsg='';try{await fbInit();const P=new fb.U.GoogleAuthProvider();
+    try{await fb.U.signInWithPopup(fb.auth,P)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')await fb.U.signInWithRedirect(fb.auth,P);else throw e}
+    try{localStorage.setItem('hospital-cloud','1')}catch(e){}}
+  catch(e){cloudMsg=e.code==='auth/unauthorized-domain'?'Sign-in only works on the GitHub site (annabxclu.github.io).':e.code==='auth/popup-closed-by-user'?'':e.code?'Sign-in failed ('+e.code+'). Try again, or open the game on the GitHub site.':'Sign-in isn\'t available here. Open the game on the GitHub site (annabxclu.github.io/Triage-Ward) to sign in.';cloudUI()}}
+async function cloudSignOut(){if(!fb)return;await cloudPush(true);await fb.U.signOut(fb.auth);try{localStorage.removeItem('hospital-cloud')}catch(e){}fbUser=null;cloudUI();toast('Signed out. This device keeps its own copy.')}
+function cloudUI(){const el=document.getElementById('acctBox');if(!el)return;
+  if(fbUser){el.innerHTML=`<div class="acct">${fbUser.photoURL?`<img src="${esc(fbUser.photoURL)}" alt="" referrerpolicy="no-referrer">`:''}<div><b>${esc(fbUser.displayName||'Signed in')}</b><span>${esc(fbUser.email||'')}</span></div></div>
+    <p class="acctst">${cloudBusy?'Syncing…':lastPush?`Saved to your account at ${new Date(lastPush).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}.`:'Your game saves to your account automatically.'}</p>${cloudMsg?`<p class="acctst warnnote">${esc(cloudMsg)}</p>`:''}
+    <div class="line wrap"><button class="btn sm" data-act="cloudsync">Save now</button><button class="btn sm" data-act="cloudout">Sign out</button></div>`}
+  else el.innerHTML=`<p class="acctst">Sign in to keep the same hospital and Casebook on every device.</p>${cloudMsg?`<p class="acctst warnnote">${esc(cloudMsg)}</p>`:''}<div><button class="btn primary" data-act="cloudin">Sign in with Google</button></div>`}
+/* restore an existing session quietly */
+try{if(localStorage.getItem('hospital-cloud')==='1'&&typeof document!=='undefined')fbInit().catch(e=>{fbErr=String(e)})}catch(e){}
+
 function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}return null}
 
 function log(msg,kind=''){S.log.unshift({t:S.t,at:Date.now(),msg,kind});if(S.log.length>40)S.log.length=40}
@@ -1591,11 +1630,11 @@ function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='c
 const BANDS=[['Midnight','#13232a'],['Navy','#14213d'],['Ocean','#0b4f6c'],['Forest','#1f3b2d'],['Plum','#3b1f3a'],['Crimson','#5a1a1f'],['Slate','#2f3640'],['Charcoal','#1c1c1c'],['Sand','#e7dcc8'],['Sky','#cfe3f0']];
 let bandColor=null;try{bandColor=localStorage.getItem('hospital-band')}catch(e){}
 function lum(hex){const n=parseInt(hex.slice(1),16),c=[n>>16&255,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]}
-function applyBand(){const r=document.documentElement.style;if(!bandColor){['--band','--band-ink','--band-muted','--band-line'].forEach(k=>r.removeProperty(k));return}
+function applyBand(){if(typeof document==='undefined')return;const r=document.documentElement.style;if(!bandColor){['--band','--band-ink','--band-muted','--band-line'].forEach(k=>r.removeProperty(k));return}
   const light=lum(bandColor)>.4;r.setProperty('--band',bandColor);r.setProperty('--band-ink',light?'#13232a':'#f1f6f6');r.setProperty('--band-muted',light?'#4a5f64':'rgba(241,246,246,.68)');r.setProperty('--band-line',light?'rgba(19,35,42,.25)':'rgba(255,255,255,.2)')}
 function swatchesHTML(){const cur=bandColor||'';return BANDS.map(([n,c])=>`<button class="sw ${cur===c||(!cur&&c==='#13232a')?'on':''}" data-act="band" data-c="${c}" style="--c:${c}" aria-label="${n}" title="${n}"><span></span>${n}</button>`).join('')+
   `<label class="sw custom" title="Custom color"><input type="color" id="bandPick" value="${cur||'#13232a'}" aria-label="Custom top bar color"><span>Custom</span></label><button class="btn sm" data-act="band" data-c="">Reset</button>`}
-function settingsUI(){const d=document.getElementById('settingsDlg');if(!d)return;const t=document.getElementById('testBtn');if(t&&S)t.setAttribute('aria-checked',S.test?'true':'false');
+function settingsUI(){const d=document.getElementById('settingsDlg');if(!d)return;cloudUI();const t=document.getElementById('testBtn');if(t&&S)t.setAttribute('aria-checked',S.test?'true':'false');
   const st=document.getElementById('soundTgl');if(st)st.setAttribute('aria-checked',soundOn?'true':'false');document.getElementById('swatches').innerHTML=swatchesHTML()}
 applyBand();
 let soundOn=true;try{soundOn=localStorage.getItem('hospital-sound')!=='0'}catch(e){}
@@ -2341,6 +2380,9 @@ document.addEventListener('click',e=>{
     case 'discharge':p&&dischargeAdm(p);break;
     case 'testmode':S.test=!S.test;if(S.test)log('Sandbox mode turned on.','warn');settingsUI();break;
     case 'settings':{const d=document.getElementById('settingsDlg');settingsUI();d.showModal();return}
+    case 'cloudin':cloudSignIn();return;
+    case 'cloudout':cloudSignOut();return;
+    case 'cloudsync':save();cloudPush(true);return;
     case 'setclose':document.getElementById('settingsDlg').close();return;
     case 'band':bandColor=b.dataset.c||null;try{if(bandColor)localStorage.setItem('hospital-band',bandColor);else localStorage.removeItem('hospital-band')}catch(e){}applyBand();settingsUI();return;
     case 'tmoney':S.money+=+b.dataset.n;toast(`Added ${fmt$(+b.dataset.n)}.`);break;
@@ -2383,7 +2425,7 @@ document.addEventListener('click',e=>{
     case 'assign':p&&assignStaff(p,b.dataset.s);break;
     case 'addroom':{const D=S.depts[b.dataset.d||'er'],k=b.dataset.k==='tri'?'triRooms':'dxRooms';if(S.money<ROOM_COST||D[k]>=ROOMMAX)return;S.money-=ROOM_COST;D[k]++;toast(`${b.dataset.k==='tri'?'Triage':'Diagnostic'} room added.`);break}
     case 'fire':{const d=b.dataset.d,r=b.dataset.r;const D=S.depts[d];if(!D[r])return;if(r==='lead'&&busyCount(d)>=D.lead){toast('Everyone is mid-procedure. Wait until someone is free.');return}D[r]--;break}
-    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){const dl=document.getElementById('settingsDlg');if(dl.open)dl.close();S=null;BOOK={};bookV++;bookKey=null;try{localStorage.removeItem(KEY);localStorage.removeItem(BOOKKEY)}catch(e){}nb.textContent='New game';render();return}
+    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){const dl=document.getElementById('settingsDlg');if(dl.open)dl.close();S=null;lastPushedAt=0;BOOK={};bookV++;bookKey=null;try{localStorage.removeItem(KEY);localStorage.removeItem(BOOKKEY)}catch(e){}nb.textContent='New game';render();return}
       confirmNew=Date.now();nb.textContent='Tap again to reset';setTimeout(()=>{nb.textContent='New game'},3000);return}
   }
   autoAssign();dirty=true;render();
@@ -2397,12 +2439,12 @@ document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefa
 /* ================= LOOP ================= */
 let saveAt=0;
 document.addEventListener('visibilitychange',()=>{if(!S)return;
-  if(document.hidden){if(S.speed){S.lastSpeed=S.speed;S.speed=0;S.autoPaused=true;save()}}
+  if(document.hidden){save();cloudPush();if(S.speed){S.lastSpeed=S.speed;S.speed=0;S.autoPaused=true;save()}}
   else if(S.autoPaused){S.autoPaused=false;S.speed=S.lastSpeed||1;lastReal=performance.now();dirty=true;toast('Welcome back. Your hospital was paused while you were away.')}});
 function loop(){
   const now=performance.now();let dtReal=Math.min(now-lastReal,3600000);lastReal=now;
   if(S&&S.speed){step(dtReal/MS_PER_MIN*S.speed)}
-  if(S){if(dirty)render();else tickUI();if(now-saveAt>3000){save();saveAt=now}}
+  if(S){if(dirty)render();else tickUI();if(now-saveAt>3000){save();saveAt=now}if(fbUser&&Date.now()-lastPush>30000)cloudPush()}
 }
 function start(data){
   S=(data&&data.state)||load();
