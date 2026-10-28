@@ -593,7 +593,7 @@ X('burn','Burn assessment (TBSA)',8,200,['trauma','plastic'],'No burns');
 X('oto','Otoscopy',3,50,['er','ent','clinic'],'Normal ear canal and eardrum');
 X('echo','Echocardiogram',25,900,['cardio'],'Normal heart function, EF 60%');
 X('stress','Exercise stress test',35,700,['cardio'],'No ischemia at peak exercise');
-X('rom','Range-of-motion & special tests',8,150,['ortho'],'Full, painless range of motion');
+X('rom','Range-of-motion & special tests',8,150,['ortho','er','trauma'],'Full, painless range of motion');
 X('cxr','Chest X-ray',10,250,['rad'],'Clear lungs, normal heart size');
 X('xr','Bone & joint X-ray',10,220,['rad'],'No fracture');
 X('pano','Panoramic dental X-ray',10,180,['rad','omfs'],'No abnormality');
@@ -1792,10 +1792,13 @@ function startAutopsy(p){
 }
 /* a diagnosis needs evidence: half the case's findings, at least one from an exam or test, plus a lab or imaging result if the case has one */
 const isLR=x=>{const d=EXAMS[x]&&EXAMS[x].depts;return Array.isArray(d)&&(d.includes('lab')||d.includes('rad'))};
-function evidence(p){const c=cond(p),tot=c.F.length,need=Math.ceil(tot/2),got=p.rev.length;
-  const hasLR=c.F.some(f=>isLR(f.x)),gotLR=p.rev.some(i=>isLR(c.F[i].x));
-  const hasT=c.F.some(f=>!f.pres),gotT=p.rev.some(i=>!c.F[i].pres);
-  const miss=[];if(got<need)miss.push(`uncover at least ${need} of ${tot} findings (${got} so far)`);if(hasT&&!gotT&&!(hasLR&&!gotLR))miss.push('uncover a finding from an exam or test');if(hasLR&&!gotLR)miss.push('get a lab or imaging result');
+function evidence(p){const c=cond(p),L=p.loc;
+  /* only findings the tests available here (plus the Lab and Radiology) can reveal count, so every case can be confirmed where it is treated */
+  const reach=i=>{const f=c.F[i];if(f.pres||p.rev.includes(i))return true;if(examHere(f.x,L))return true;const l=lrOf(f.x);return !!(l&&isFlow(L)&&S.depts[l]&&S.depts[l].on)};
+  const R=c.F.map((f,i)=>i).filter(reach);const tot=R.length,need=Math.ceil(tot/2),got=p.rev.length;
+  const hasLR=R.some(i=>!!lrOf(c.F[i].x)),gotLR=p.rev.some(i=>!!lrOf(c.F[i].x));
+  const hasT=R.some(i=>!c.F[i].pres),gotT=p.rev.some(i=>!c.F[i].pres);
+  const miss=[];if(got<need)miss.push(`uncover at least ${need} findings (${got} so far)`);if(hasT&&!gotT&&!(hasLR&&!gotLR))miss.push('uncover a finding from an exam or test');if(hasLR&&!gotLR)miss.push('get a lab or imaging result');
   return {ok:!miss.length,miss}}
 /* Examinations offered: the basic work-up plus anything that could turn up a finding for the current likely diagnoses */
 function relevantExams(p){const L=p.loc,c0=cond(p);const LK=likely(p);
