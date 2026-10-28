@@ -1718,7 +1718,7 @@ function tickUI(){
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
-  document.getElementById('nextArr').textContent=fmtDur(Math.ceil(S.next-S.t));
+  document.getElementById('nextArr').textContent=fmtCountdown(S.next-S.t);
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
