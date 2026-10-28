@@ -233,6 +233,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .sthead+.strow{border-top:0}
 .strole{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
 .strole .rgn{font-size:12px;color:var(--muted);background:var(--panel2);border-radius:999px;padding:1px 7px;font-weight:400}
+.rxgo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}.rxgo .btn{min-width:120px}
 .sec.rxpin{position:sticky;top:var(--chh,0px);z-index:1;background:var(--panel);padding-top:10px;padding-bottom:10px;box-shadow:0 6px 8px -8px rgba(0,0,0,.35)}
 .inslist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;flex:none}
 .inscard{border:1px dashed var(--line);background:var(--panel);border-radius:8px;padding:10px 12px;display:grid;gap:6px;align-content:start}
@@ -2229,14 +2230,13 @@ function chartHTML(p){
   }
 
   if(L==='pharm'){
-    h+=`<div class="sec rxpin"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}<div class="rxlist"><b>Medication to dispense:</b><ul>${c.rx.map(r=>`<li>${esc(MEDS[r].name)} <span class="mt">${MEDS[r].type}</span></li>`).join('')}</ul></div></div></div>
+    h+=`<div class="sec rxpin"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}<div class="rxlist"><b>Medication to dispense:</b><ul>${c.rx.map(r=>`<li>${esc(MEDS[r].name)} <span class="mt">${MEDS[r].type}</span></li>`).join('')}</ul></div></div>
+      <div class="rxgo"><span class="mono" id="rxSel">0 selected</span><button class="btn primary" data-act="dispense" ${S.depts.pharm.lead?'':'disabled'}>Dispense</button></div>${S.depts.pharm.lead?'':'<span class="empty-note">Hire a pharmacist to dispense.</span>'}</div>
      <div class="sec"><h3>Dispense medication <span>pick what they need</span></h3><div class="meds">`;
     ['OTC','Rx'].forEach(t=>{const n=Object.values(MEDS).filter(m=>m.type===t).length;h+=`<details class="medgrp" data-g="${t}" ${medOpen.has(t)?'open':''}><summary>${t==='OTC'?'Over the counter':'Prescription'}<span class="mono">${n} items</span></summary><div class="meds">`;
       Object.values(MEDS).filter(m=>m.type===t).sort((a,b)=>a.name.localeCompare(b.name)).forEach(m=>{
         h+=`<label class="med"><input type="checkbox" id="med-${m.id}" value="${m.id}"><span class="mn">${esc(m.name)}</span><span class="mt">${t}</span><span class="mp">${fmt$(m.price)}</span></label>`});h+=`</div></details>`});
-    h+=`</div><div class="line" style="display:flex;gap:6px;flex-wrap:wrap">
-     <button class="btn primary" data-act="dispense" ${S.depts.pharm.lead?'':'disabled'}>Dispense</button></div>
-     ${S.depts.pharm.lead?'':'<span class="empty-note">Hire a pharmacist to dispense.</span>'}</div>`;
+    h+=`</div></div>`;
     return h;
   }
 
@@ -2335,6 +2335,7 @@ function renderChart(){
   const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;{const hd=el.querySelector('.ch-head');if(hd)el.style.setProperty('--chh',hd.offsetHeight+'px')}if(chartKey!==p.id)el.scrollTop=0;
   if(chartKey===p.id){for(const k in keep){const i=document.getElementById(k);if(!i)continue;
     if(i.type==='checkbox')i.checked=keep[k];else if([...i.options].some(o=>o.value===keep[k]&&!o.disabled))i.value=keep[k]}el.scrollTop=sc}
+  {const rs=el.querySelector('#rxSel');if(rs)rs.textContent=`${el.querySelectorAll('.med input:checked').length} selected`}
   chartKey=p.id;chartPending=false;
 }
 function renderTop(){
@@ -2374,6 +2375,7 @@ function render(){
 
 /* ================= EVENTS ================= */
 let confirmNew=0;
+document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#chart .med')){const n=document.querySelectorAll('#chart .med input:checked').length;const el=document.getElementById('rxSel');if(el)el.textContent=`${n} selected`}});
 document.addEventListener('input',e=>{if(e.target.id==='bandPick'){bandColor=e.target.value;try{localStorage.setItem('hospital-band',bandColor)}catch(err){}applyBand();document.querySelectorAll('.sw.on').forEach(x=>x.classList.remove('on'))}});
 document.addEventListener('click',e=>{const dl=document.getElementById('settingsDlg');if(e.target===dl){dl.close();return}});
 document.addEventListener('click',e=>{
