@@ -92,7 +92,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .navi.locked .badge{background:var(--panel2);color:var(--muted)}
 .navi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .navi .ct{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
-.navi .ct .idle{color:var(--accent);font-weight:700}
+.navi .ct .idle{color:var(--amber);font-weight:700}
 .navi .redct{font-family:var(--f-mono);font-size:11px;color:var(--red);font-weight:600}
 .navi.locked .nm{color:var(--muted)}
 .unlock{border:1px solid var(--line);background:var(--panel);border-radius:4px;font-family:var(--f-mono);font-size:11px;padding:2px 6px}
@@ -342,7 +342,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       </div>
       <ul>
         <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
-        <li>A patient reaches Reception every 5 minutes. Up to 10 can wait at check-in.</li>
+        <li>A new patient arrives every 5 minutes and goes straight to the department for their condition.</li>
         <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
         <li>Everything runs on real time: a 20-minute CT takes 20 real minutes. Closing the page pauses your hospital.</li>
@@ -1036,7 +1036,7 @@ function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60
 function fresh(name){
   const depts={};DEPTS.forEach(d=>depts[d.id]={on:d.id==='er',lead:d.id==='er'?1:0,nurse:d.id==='er'?1:0,q:[],w:[],adm:[],beds:d.id==='icu'?ICU_START:d.kind==='clinic'?START_BEDS:0});
   S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:ARRIVAL,depts,rec:[],morgue:[],P:{},seq:1,log:[],
-     st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'rec',pid:null};
+     st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'er',pid:null};
   erInit();
   arrive();
   log(`${name} opened its doors. The ER is staffed and ready.`,'good');
@@ -1050,8 +1050,10 @@ function rep(n){}
 const pname=p=>`${p.first} ${p.last}`;
 const cond=p=>CONDS[p.c];
 
+/* send a new arrival to the ward for their condition, else another open ward that treats it, else the ER */
+function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='clinic';
+  const order=[c.d,...c.t,'er'].filter((d,i,a)=>a.indexOf(d)===i&&ok(d));for(const d of order)if(space(d,p||{triaged:false}))return d;return null}
 function arrive(force){
-  if(S.rec.length>=RECMAX){S.st.away++;rep(-1);dirty=true;return}
   const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>(c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=c.cos?{n:'Self-pay (cosmetic)',c:1}:age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
@@ -1059,8 +1061,10 @@ function arrive(force){
   const rev=[];c.F.forEach((f,i)=>{if(f.pres)rev.push(i)});
   const p={id,first:pick(sex==='f'?FIRST_F:FIRST_M),last:pick(LAST),age,sex,ins:ins.n,cov:ins.c,c:ci,rev,res:{},loc:'rec',inW:false,
     arr:S.t,deadline:S.t+PAT[c.p],span:PAT[c.p],busy:null,dx:null,bill:0,stab:0,from:null,v:0};
-  S.P[id]=p;S.rec.push(id);dirty=true;
-  if(c.p==='r')log(`${pname(p)} arrived at Reception: urgent.`,'bad');
+  const dest=routeDept(c,p);
+  if(!dest){S.st.away++;dirty=true;return}
+  S.P[id]=p;addTo(p,dest);dirty=true;
+  if(c.p==='r')log(`${pname(p)} arrived at ${DEPT[dest].name}: urgent.`,'bad');
 }
 
 /* ---------- ER: triage → waiting room / diagnostic room ---------- */
@@ -1272,10 +1276,9 @@ function renderSide(){
       <button class="btn sm" data-act="tmoney" data-n="10000">+$10,000</button><button class="btn sm" data-act="tmoney" data-n="100000">+$100,000</button>
       <button class="btn sm" data-act="tunlock">Unlock all</button><button class="btn sm" data-act="tstaff">Staff all depts</button>
       <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
-      <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear reception</button></div>
+      <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear all queues</button></div>
       <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
   h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
-  h+=item('rec','DESK','Reception',`${S.rec.length}/${RECMAX}`,40,redIn(S.rec),colIn(S.rec));
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
   on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
   h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
@@ -1288,8 +1291,8 @@ function renderSide(){
    <div>Left <b>${S.st.left}</b></div><div>Died <b>${S.st.died}</b></div>
    <div>Misdiagnosed <b>${S.st.misdx}</b></div><div>Turned away <b>${S.st.away}</b></div></div></div>
   <details class="help"><summary>How a case flows</summary><ol>
-   <li>Click a patient at Reception and read the complaint. The name color is triage: red, yellow, green.</li>
-   <li>Send them to an open department. In every ward: assign a triage room and a nurse for the first tests, then the waiting room or a diagnostic room with a doctor.</li>
+   <li>New patients arrive straight in the ward for their condition. The name color is triage: red, yellow, green.</li>
+   <li>In every ward: assign a triage room and a nurse for the first tests, then the waiting room or a diagnostic room with a doctor.</li>
    <li>Run tests to uncover findings. For imaging or blood work, tick Doctor orders, send the patient to Radiology or the Lab, assign a tech, then return them.</li>
    <li>Pick the diagnosis. The chart's Likely diagnoses list shows the odds from what you've uncovered so far. A wrong guess sends the patient home without paying.</li>
    <li>Treat in a department that handles that condition, or transfer them out. Bigger cases then need a recovery bed; discharge them when their stay ends.</li>
@@ -1592,7 +1595,7 @@ function renderTop(){
 function tickUI(){
   document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
-  document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':fmtDur(Math.ceil(S.next-S.t));
+  document.getElementById('nextArr').textContent=fmtDur(Math.ceil(S.next-S.t));
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
@@ -1629,8 +1632,8 @@ document.addEventListener('click',e=>{
     case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(hasNamedClin(d.id)){while(D.staff.filter(x=>x.role==='nurse').length<2)hireNamed('nurse',d.id);while(D.staff.filter(x=>x.role==='doctor').length<2)hireNamed('doctor',d.id);return}if(NAMED_ROLE[d.id]){while((D.staff||[]).length<2)hireNamed(NAMED_ROLE[d.id],d.id);return}if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
     case 'tskip':step(+b.dataset.n);toast(`Skipped ${b.dataset.n} minutes.`);break;
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
-    case 'tclear':[...S.rec].forEach(id=>gone(S.P[id]));toast('Reception cleared.');break;
-    case 'tspawn':{if(S.rec.length>=RECMAX){toast('Reception is full.');return}const v=document.getElementById('testCond').value;arrive(v===''?null:+v);S.view='rec';break}
+    case 'tclear':DEPTS.forEach(d=>{const D=S.depts[d.id];[...(D.q||[])].forEach(id=>S.P[id]&&gone(S.P[id]))});toast('All queues cleared.');break;
+    case 'tspawn':{const v=document.getElementById('testCond').value;const before=S.seq;arrive(v===''?null:+v);const np=S.P['p'+before];if(np){S.view=np.loc;S.pid=np.id;toast(`${np.first} arrived in ${DEPT[np.loc].name}.`)}else toast('No open department has room for that patient.');break}
     case 'bookall':{if(b.dataset.v==='1')DEPTS.forEach(d=>bookOpen.add(d.id));else bookOpen.clear();saveBookOpen();bookKey=null;renderMain();return}
     case 'addicubed':{const D=S.depts.icu;if(S.money<ICU_BED_COST||D.beds>=ICU_MAX)return;S.money-=ICU_BED_COST;D.beds++;toast('ICU bed added.');break}
     case 'rushicu':{if(!p)return;sendTo(p,'icu');if(p.loc==='icu'){toast(`${p.first} rushed to the ICU.`,'good');S.view='icu'}break}
@@ -1684,6 +1687,7 @@ function start(data){
     const I=S.depts.icu;if(!I.icuV){I.icuV=1;I.beds=Math.max(I.beds||0,ICU_START);I.dxr=I.dxr||[];const mv=[...(I.q||[]),...(I.w||[]),...(I.tri||[])];I.q=[];I.w=[];I.tri=[];
       mv.forEach(id=>{const p=S.P[id];if(!p)return;I.dxr.push(id);p.stage='icu';p.nurse=null;p.doc=p.doc||null;p.inW=false});(I.dxr||[]).forEach(id=>{if(S.P[id])S.P[id].stage='icu'})}}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
+  if(S){if(S.view==='rec')S.view='er';(S.rec||[]).slice().forEach(id=>{const p=S.P[id];S.rec=S.rec.filter(x=>x!==id);if(!p)return;const d=routeDept(cond(p),p);if(d){p.loc='x';addTo(p,d)}else delete S.P[id]})}
   render();setInterval(loop,200);
 }
 window.claude?.hot?.snapshot?.(()=>({state:S}));
