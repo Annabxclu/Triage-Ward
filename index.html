@@ -172,6 +172,12 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .bookbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .bookbar input{flex:1;min-width:0;max-width:480px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.bookgrp>summary{list-style:none;cursor:pointer;border-radius:6px;padding:4px 0}
+.bookgrp>summary::-webkit-details-marker{display:none}
+.bookgrp>summary h2::before{content:"";display:inline-block;width:0;height:0;border-left:6px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent;margin-right:10px;transition:transform .15s;vertical-align:middle}
+.bookgrp[open]>summary h2::before{transform:rotate(90deg)}
+.bookgrp>summary:hover h2{color:var(--accent)}
+.bookgrp[open]>.cases{margin-top:8px}
 .cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
 .case{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:12px 14px;display:grid;gap:8px;align-content:start;min-width:0}
 .case.unk{border-style:dashed;background:transparent}
@@ -943,6 +949,8 @@ const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
 let BOOK={}; try{BOOK=JSON.parse(localStorage.getItem(BOOKKEY)||'{}')||{}}catch(e){BOOK={}}
 let ordersOpen=true;try{ordersOpen=localStorage.getItem('hospital-orders-open')!=='0'}catch(e){}
 let lockedOpen=true;try{lockedOpen=localStorage.getItem('hospital-locked-open')!=='0'}catch(e){}
+let bookOpen=new Set();try{bookOpen=new Set(JSON.parse(localStorage.getItem('hospital-book-open')||'[]'))}catch(e){}
+const saveBookOpen=()=>{try{localStorage.setItem('hospital-book-open',JSON.stringify([...bookOpen]))}catch(e){}};
 let bookV=0,bookQ='',bookKey=null,mainMode=null;
 function learn(c){const first=!BOOK[c.n];BOOK[c.n]=(BOOK[c.n]||0)+1;bookV++;try{localStorage.setItem(BOOKKEY,JSON.stringify(BOOK))}catch(e){}
   if(first)log(`New casebook entry: ${c.n}.`,'good');}
@@ -1289,7 +1297,7 @@ function renderMain(){
   if(v==='book'){
     if(mainMode!=='book'){m.innerHTML=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:280">BOOK</span><div><h1>Casebook</h1>
       <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. It stays in this browser across new games.</p></div></div></div>
-      <div class="bookbar"><label for="bookQ" class="sr">Search cases</label><input id="bookQ" type="search" placeholder="Search by condition, symptom or test…" value="${esc(bookQ)}"><span class="cap mono" id="bookCount"></span></div>
+      <div class="bookbar"><label for="bookQ" class="sr">Search cases</label><input id="bookQ" type="search" placeholder="Search by condition, symptom or test…" value="${esc(bookQ)}"><span class="cap mono" id="bookCount"></span><button class="btn sm" data-act="bookall" data-v="1">Expand all</button><button class="btn sm" data-act="bookall" data-v="0">Collapse all</button></div>
       <div id="bookList"></div>`;mainMode='book';bookKey=null}
     const key=bookV+'|'+bookQ;if(key!==bookKey){bookKey=key;document.getElementById('bookList').innerHTML=bookHTML()}
     return;
@@ -1333,7 +1341,7 @@ function renderMain(){
 function bookHTML(){
   const q=bookQ.trim().toLowerCase();let known=0,h='';
   DEPTS.forEach(d=>{const list=CONDS.filter(c=>c.d===d.id).sort((a,b)=>a.n.localeCompare(b.n));if(!list.length)return;
-    let cards='';list.forEach(c=>{const k=BOOK[c.n];if(k)known++;
+    let cards='',dk=0;list.forEach(c=>{const k=BOOK[c.n];if(k){known++;dk++}
       if(q){const hay=(k?[c.n,...c.F.map(f=>f.l+' '+EXAMS[f.x].name),c.tx[0]].join(' '):'').toLowerCase();if(!hay.includes(q))return}
       if(!k){cards+=`<div class="case unk"><div class="case-h"><span class="tri ${c.p}"></span><b>Undiscovered case</b></div><span class="empty-note">Confirm it in a patient to unlock.</span></div>`;return}
       cards+=`<article class="case"><div class="case-h"><span class="tri ${c.p}"></span><b class="pr-${c.p}">${esc(c.n)}</b><span class="mono seen">seen ${k}×</span></div>
@@ -1341,7 +1349,7 @@ function bookHTML(){
         <dl><dt>Treated in</dt><dd>${esc(c.t.map(t=>DEPT[t].name).join(', '))}</dd>
         <dt>Treatment</dt><dd>${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}</dd><dt>Recovery</dt><dd>${c.los?`${fmtDur(c.los*DAY)} in a recovery bed (real-life stay about ${c.los} day${c.los>1?'s':''})`:'Goes home after treatment'}</dd>
         <dt>Prescription</dt><dd>${esc(c.rx.map(r=>MEDS[r].name).join(', '))}</dd></dl></article>`});
-    if(cards)h+=`<section class="zone"><div class="zone-h"><h2>${esc(d.name)}</h2></div><div class="cases">${cards}</div></section>`});
+    if(cards)h+=`<details class="zone bookgrp" data-d="${d.id}" ${q||bookOpen.has(d.id)?'open':''}><summary class="zone-h"><h2>${esc(d.name)}</h2><span class="cap">${dk}/${list.length} discovered</span></summary><div class="cases">${cards}</div></details>`});
   setTimeout(()=>{const el=document.getElementById('bookCount');if(el)el.textContent=`${known} of ${CONDS.length} discovered`},0);
   return h||`<p class="empty-note">No discovered cases match “${esc(bookQ)}”.</p>`;
 }
@@ -1511,6 +1519,7 @@ document.addEventListener('click',e=>{
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
     case 'tclear':[...S.rec].forEach(id=>gone(S.P[id]));toast('Reception cleared.');break;
     case 'tspawn':{if(S.rec.length>=RECMAX){toast('Reception is full.');return}const v=document.getElementById('testCond').value;arrive(v===''?null:+v);S.view='rec';break}
+    case 'bookall':{if(b.dataset.v==='1')DEPTS.forEach(d=>bookOpen.add(d.id));else bookOpen.clear();saveBookOpen();bookKey=null;renderMain();return}
     case 'pause':S.speed=S.speed?0:1;break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'order':{if(!p)return;const x=b.dataset.x;p.orders=p.orders||[];const i=p.orders.indexOf(x);if(i>=0)p.orders.splice(i,1);else p.orders.push(x);p.v++;break}
@@ -1538,7 +1547,7 @@ document.addEventListener('click',e=>{
   dirty=true;render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
-document.addEventListener('toggle',e=>{if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
+document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
 document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
