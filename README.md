@@ -5,7 +5,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 **Play:** https://annabxclu.github.io/Triage-Ward/ (once GitHub Pages is enabled)
 
 ## How a case flows
-1. A new walk-in arrives every 8 real minutes (32 game minutes), straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 real hour), yellow (2 hours), green (3 hours).
+1. Walk-ins arrive at random, about 100 per game day to start (more as you accept insurance plans), straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 real hour), yellow (2 hours), green (3 hours).
 2. In every ward, assign a **triage room** and a named **nurse** for the first tests (vitals, ECG, swabs, urine and glucose checks), then move them to the **waiting room** or a **diagnostic room** where you assign a **doctor** to examine, diagnose and treat.
 3. Run real tests to uncover hidden findings. A doctor can place **Doctor orders** for tests in other departments (e.g. *Complete blood count — Laboratory*, *CT head — Radiology*). Send the patient there, assign a named lab tech or rad tech, and they run the orders before you return the patient.
 4. Pick the diagnosis from 600 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
@@ -21,6 +21,10 @@ It's a single file. Open `index.html` in any modern browser. Progress saves in t
 
 ## Test mode
 Click **Test mode** in the top bar to open test tools in the sidebar: add money, unlock and staff every department, skip time, finish all running timers, clear reception, or add a patient with a specific condition. Click it again to hide the tools.
+
+## Insurance
+
+Patients arrive at random through the day. How many come is set by the insurance plans you accept: you start with five (Uninsured, Unity Health, Harbor Mutual, Cygnet Care, Bluepoint Shield) for about 100 patients per game day. The **Insurance** page lists all 19 plans. Each locked plan has a challenge, such as treating 30 patients in the ER for StateCare; finish it and the plan unlocks for free, adding its patients per day. A new patient's insurance is drawn from your accepted plans in proportion to the patients each one sends.
 
 ## Surgery
 

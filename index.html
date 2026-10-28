@@ -216,6 +216,15 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .strole{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
 .strole .rgn{font-size:12px;color:var(--muted);background:var(--panel2);border-radius:999px;padding:1px 7px;font-weight:400}
 .sec.rxpin{position:sticky;top:var(--chh,0px);z-index:1;background:var(--panel);padding-top:10px;padding-bottom:10px;box-shadow:0 6px 8px -8px rgba(0,0,0,.35)}
+.inslist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;flex:none}
+.inscard{border:1px dashed var(--line);background:var(--panel);border-radius:8px;padding:10px 12px;display:grid;gap:6px;align-content:start}
+.inscard.on{border-style:solid;border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+.insh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.insok{color:var(--green);font-size:12px;font-weight:700}.inslock{color:var(--muted);font-size:12px;font-weight:700}
+.insm{display:flex;gap:4px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.insc{font-size:13px}.insc.done{color:var(--muted);font-size:12px}
+.insbar{height:6px;border-radius:999px;background:var(--panel2);overflow:hidden}.insbar i{display:block;height:100%;background:var(--accent)}
+.insp{font-size:12px;color:var(--muted);text-align:right}
 .bookbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .bookbar input{flex:1;min-width:0;max-width:480px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -463,7 +472,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       </div>
       <ul>
         <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
-        <li>A new walk-in arrives every 8 real minutes (32 game minutes) and goes straight to the department for their condition.</li>
+        <li>Walk-ins arrive at random: about 100 per game day to start, more as you accept new insurance plans. Each goes straight to the department for their condition.</li>
         <li>Red patients have 1 real hour, yellow 2 hours, green 3 hours. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
         <li>Time runs as game time: 1 game minute is 15 real seconds, so a 10-minute CT head takes 2½ real minutes. Closing the page pauses your hospital.</li>
@@ -1413,10 +1422,49 @@ const FIRST_F = ["Maya","Grace","Lucia","Amara","Hannah","Nora","Priya","Elena",
 const FIRST_M = ["Marcus","Daniel","Owen","Rafael","Kwame","Theo","Samuel","Luis","Arjun","Victor","Jamal","Henry","Elijah","Tomás","Ray","Felix","Gus","Andre","Malik","Walter","Isaac","Diego","Kenji","Omar"];
 const STAFF_LAST = ["Abbott", "Acosta", "Ahmadi", "Aldridge", "Alvarado", "Amari", "Andersen", "Arakawa", "Ashford", "Avila", "Bader", "Baird", "Banerjee", "Barlow", "Bautista", "Beaumont", "Bello", "Bergstrom", "Bianchi", "Blackwood", "Bose", "Bowman", "Bradshaw", "Calloway", "Campos", "Carver", "Caruso", "Chandra", "Cho", "Clement", "Colburn", "Conti", "Crane", "Cruz", "Dalton", "Darby", "Dasgupta", "Delacroix", "Desai", "Dimitrov", "Donovan", "Drummond", "Dubois", "Eastman", "Ekström", "Emerson", "Espinoza", "Farrow", "Ferreira", "Finch", "Fitzgerald", "Flores", "Forsythe", "Fujita", "Gallagher", "Garza", "Gill", "Goldberg", "Granger", "Guerrero", "Gupta", "Halvorsen", "Hartley", "Hashemi", "Hayward", "Henning", "Hoffman", "Horvath", "Huang", "Hughes", "Ingram", "Ivanova", "Iwasaki", "Jansen", "Jaramillo", "Jensen", "Joshi", "Kahale", "Kapoor", "Keller", "Kendrick", "Khalil", "Kim", "Kingsley", "Kovac", "Kumar", "Lachance", "Lambert", "Larsen", "Laurent", "Leblanc", "Lennox", "Levesque", "Lopez", "Lund", "Macias", "Mahoney", "Malik", "Marchetti", "Mbeki", "Mccall", "Medina", "Mendoza", "Mercer", "Meyer", "Mishra", "Molina", "Monroe", "Morales", "Mukherjee", "Murphy", "Nadeau", "Nair", "Navarro", "Nguyen", "Nilsson", "Novak", "Nwosu", "Oakley", "Obi", "Ochoa", "Okonkwo", "Olsen", "Ortega", "Ostrowski", "Pace", "Padilla", "Park", "Pearce", "Pham", "Pierce", "Quintero", "Rahman", "Ramirez", "Rao", "Rasmussen", "Redding", "Rinaldi", "Rivera", "Rocha", "Rojas", "Rossi", "Rowe", "Saito", "Salazar", "Sandoval", "Santos", "Schmidt", "Sharma", "Shaw", "Silva", "Sinclair", "Solberg", "Sorensen", "Soto", "Stanton", "Steele", "Suzuki", "Takahashi", "Tan", "Tanaka", "Thakur", "Torres", "Tran", "Ueda", "Underwood", "Valdez", "Varga", "Vasquez", "Vega", "Voss", "Wagner", "Walsh", "Watanabe", "Webb", "Weiss", "Winslow", "Wong", "Xu", "Yilmaz", "Young", "Zamora", "Zhang", "Zielinski"];
 const LAST = ["Okafor","Reyes","Lindqvist","Patel","Brennan","Nakamura","Holloway","Adeyemi","Castillo","Marsh","Whitaker","Duarte","Kowalski","Abernathy","Chen","Fontaine","Delgado","Moreau","Greer","Osei","Yamada","Pruitt","Vance","Haddad","Sutton","Ibarra","Quinlan","Barros","Thorne","Ellison"];
+/* ---------- insurances: each unlocked plan adds patients per game day ---------- */
 const INS = [
- {n:'Uninsured',c:.25,w:2},{n:'StateCare',c:.55,w:2},{n:'Unity Health',c:1,w:2},{n:'Harbor Mutual',c:.95,w:2},
- {n:'Bluepoint Shield',c:1.1,w:1.5},{n:'Cygnet Care',c:1.05,w:1.5},{n:'Evergreen PPO',c:1.2,w:1}];
-const SENIOR = {n:'SilverYears',c:.8,w:0};
+ {id:'unins',n:'Uninsured',c:.25,day:25,start:1},
+ {id:'unity',n:'Unity Health',c:1,day:20,start:1},
+ {id:'harbor',n:'Harbor Mutual',c:.95,day:20,start:1},
+ {id:'cygnet',n:'Cygnet Care',c:1.05,day:20,start:1},
+ {id:'blue',n:'Bluepoint Shield',c:1.1,day:15,start:1},
+ {id:'state',n:'StateCare',c:.55,day:15,goal:{k:'treatIn',d:['er'],n:30},txt:'Successfully treat 30 patients in the Emergency Room'},
+ {id:'silver',n:'SilverYears',c:.8,day:12,senior:1,goal:{k:'old',n:20},txt:'Successfully treat 20 patients aged 65 or older'},
+ {id:'kid',n:'KidCare Plus',c:.9,day:12,goal:{k:'kids',n:25},txt:'Successfully treat 25 patients under 16'},
+ {id:'river',n:'Riverbend Community',c:.7,day:12,goal:{k:'bedDis',n:30},txt:'Discharge 30 patients from recovery beds or observation rooms'},
+ {id:'keystone',n:'Keystone Mutual',c:1,day:12,goal:{k:'rx',n:40},txt:'Fill 40 perfect prescriptions at the Pharmacy'},
+ {id:'meridian',n:"Meridian Workers' Comp",c:1,day:10,goal:{k:'treatIn',d:['ortho','trauma'],n:25},txt:'Successfully treat 25 patients in Orthopedics or Traumatology & Burn Unit'},
+ {id:'lakeshore',n:'Lakeshore HMO',c:.9,day:12,goal:{k:'streak',n:25},txt:'Make 25 correct diagnoses in a row without a misdiagnosis'},
+ {id:'northstar',n:'Northstar Federal',c:.85,day:15,goal:{k:'day',n:5},txt:'Keep your hospital running until Day 5'},
+ {id:'horizon',n:"Horizon Women's Health",c:1.05,day:10,goal:{k:'treatIn',d:['ob'],n:25},txt:'Successfully treat 25 patients in Obstetrician & Gynecologist'},
+ {id:'pinnacle',n:'Pinnacle Cardiac Plan',c:1.1,day:10,goal:{k:'treatIn',d:['cardio'],n:20},txt:'Successfully treat 20 patients in Cardiology'},
+ {id:'crescent',n:'Crescent Life',c:1.15,day:10,goal:{k:'surg',n:20},txt:'Complete 20 surgeries'},
+ {id:'evergreen',n:'Evergreen PPO',c:1.2,day:10,goal:{k:'earn',n:250000},txt:'Earn $250,000 in total'},
+ {id:'summit',n:'Summit Global',c:1.25,day:15,goal:{k:'depts',n:10},txt:'Have 10 departments open'},
+ {id:'apex',n:'Apex Premier',c:1.4,day:8,goal:{k:'book',n:150},txt:'Discover 150 cases in the Casebook'},
+];
+const INS_BY=Object.fromEntries(INS.map(i=>[i.id,i]));
+function insInit(){if(!S.ins){S.ins={};INS.forEach(i=>{if(i.start)S.ins[i.id]=true})}
+  if(!S.st.treatBy)S.st.treatBy={};['old','kids','bedDis','rx','surg','streak','bestStreak'].forEach(k=>{if(S.st[k]==null)S.st[k]=0})}
+const insOn=()=>INS.filter(i=>S.ins&&S.ins[i.id]);
+const perDay=()=>insOn().reduce((n,i)=>n+i.day,0);
+function insProgress(i){const g=i.goal;if(!g)return [1,1];const st=S.st;let v=0;
+  if(g.k==='treatIn')v=g.d.reduce((n,d)=>n+((st.treatBy||{})[d]||0),0);
+  else if(g.k==='streak')v=Math.max(st.bestStreak||0,st.streak||0);
+  else if(g.k==='day')v=gameDay(S.t);
+  else if(g.k==='earn')v=st.revenue||0;
+  else if(g.k==='depts')v=DEPTS.filter(d=>S.depts[d.id].on).length;
+  else if(g.k==='book')v=CONDS.filter(c=>BOOK[c.n]).length;
+  else v=st[g.k]||0;
+  return [Math.min(v,g.n),g.n]}
+function insTick(){if(!S.ins)insInit();INS.forEach(i=>{if(S.ins[i.id]||!i.goal)return;const [v,n]=insProgress(i);
+  if(v>=n){S.ins[i.id]=true;dirty=true;log(`New insurance accepted: ${i.n}. +${i.day} patients per day (now ${perDay()}).`,'good');toast(`🎉 ${i.n} unlocked · +${i.day} patients/day`,'good')}})}
+/* random arrivals: exponential gaps averaging the daily total over a 1,440-minute game day */
+function nextGap(){const e=evtNow();const rate=perDay()/1440*(1+(e&&e.rate?e.rate:0));return -Math.log(1-Math.random())/Math.max(rate,1e-6)}
+function pickIns(age){const pool=insOn().filter(i=>!i.senior||age>=65);return wpick(pool,i=>i.day)}
+function countTreat(p,d){const st=S.st;if(!st.treatBy)insInit();st.treatBy[d]=(st.treatBy[d]||0)+1;if(p.age>=65)st.old++;if(p.age<16)st.kids++}
+
 
 /* ================= STATE ================= */
 const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
@@ -1449,9 +1497,9 @@ function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60
 
 function fresh(name){
   const depts={};DEPTS.forEach(d=>depts[d.id]={on:d.id==='er',lead:d.id==='er'?1:0,nurse:d.id==='er'?1:0,q:[],w:[],adm:[],beds:d.id==='icu'?ICU_START:d.kind==='clinic'?START_BEDS:0});
-  S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:ARRIVAL,depts,rec:[],morgue:[],P:{},seq:1,log:[],
+  S={v:1,name,t:0,day:0,money:25000,rep:50,speed:1,next:0,depts,rec:[],morgue:[],P:{},seq:1,log:[],
      st:{treated:0,xfer:0,left:0,died:0,misdx:0,away:0,revenue:0},view:'er',pid:null};
-  erInit();
+  erInit();insInit();S.next=nextGap();
   arrive();
   log(`${name} opened its doors. The ER is staffed and ready.`,'good');
 }
@@ -1526,7 +1574,7 @@ function soundUI(){const b=document.getElementById('soundBtn');if(!b)return;b.se
 function arrive(force){
   const pool=CONDS.filter(c=>!c.appt&&c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>{const e=evtNow();return (c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)*(e&&e.set&&e.set.has(c.n)?8:1)}));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
-  const ins=c.cos?{n:'Self-pay (cosmetic)',c:1}:age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
+  const ins=c.cos?{n:'Self-pay (cosmetic)',c:1}:pickIns(age);
   const id='p'+(S.seq++);
   const rev=[];c.F.forEach((f,i)=>{if(f.pres)rev.push(i)});
   const p={id,first:pick(sex==='f'?FIRST_F:FIRST_M),last:pick(LAST),age,sex,ins:ins.n,cov:ins.c,c:ci,rev,res:{},loc:'rec',inW:false,
@@ -1649,7 +1697,7 @@ function surgMissing(d){const D=S.depts[d],m=[];if(orIds(d).length>=(D.orRooms||
   if(!freeStaff('surgeon',d).length)m.push('surgeon');if(!freeStaff('anes',d).length)m.push('anesthesiologist');if(!freeStaff('nurse',d).length)m.push('nurse');return m}
 function startSurg(p,x,a,n){const c=cond(p),d=p.adm.d;p.surgeon=x.id;p.anes=a.id;p.nurse=n.id;p.adm.surg='or';p.collapsed=false;p.deadline=null;
   p.busy={k:'surg',d,start:S.t,end:S.t+dur(c.tx[1],d)};p.v++;dirty=true;log(`${staffName(x)} started surgery on ${pname(p)}: ${c.tx[0]}.`)}
-function finishSurg(p){const c=cond(p);p.bill+=c.tx[2];const amt=Math.round(p.bill*p.cov);S.money+=amt;S.st.revenue+=amt;S.st.treated++;rep(2);
+function finishSurg(p){const c=cond(p);countTreat(p,p.adm.d);S.st.surg++;p.bill+=c.tx[2];const amt=Math.round(p.bill*p.cov);S.money+=amt;S.st.revenue+=amt;S.st.treated++;rep(2);
   const x=staffById(p.surgeon);p.surgeon=null;p.anes=null;p.nurse=null;p.treated=true;p.adm.surg='done';p.adm.start=S.t;p.adm.until=S.t+c.los*DAY;p.v++;dirty=true;
   log(`${x?staffName(x)+' finished':'Surgery finished for'} ${pname(p)}'s surgery. Collected ${fmt$(amt)} (${p.ins}). Recovering for ${fmtDur(c.los*DAY)}.`,'good');toast(`${p.first}'s surgery done · +${fmt$(amt)}`,'good')}
 function startStab(p){
@@ -1663,8 +1711,8 @@ function startAutopsy(p){
 function diagnose(p,ci){
   if(isFlow(p.loc)&&!(p.stage==='dx'&&p.doc))return;
   const c=cond(p);
-  if(ci===p.c){p.dx=ci;rep(1);learn(c);p.v++;dirty=true;log(`Correct diagnosis: ${pname(p)} has ${c.n}.`,'good');toast(`Correct: ${c.n}`,'good');}
-  else{S.st.misdx++;rep(-5);learn(c);log(`Misdiagnosis: ${pname(p)} was told ${CONDS[ci].n} but had ${c.n}. They left unhappy.`,'bad');
+  if(ci===p.c){S.st.streak=(S.st.streak||0)+1;S.st.bestStreak=Math.max(S.st.bestStreak||0,S.st.streak);p.dx=ci;rep(1);learn(c);p.v++;dirty=true;log(`Correct diagnosis: ${pname(p)} has ${c.n}.`,'good');toast(`Correct: ${c.n}`,'good');}
+  else{S.st.misdx++;S.st.streak=0;rep(-5);learn(c);log(`Misdiagnosis: ${pname(p)} was told ${CONDS[ci].n} but had ${c.n}. They left unhappy.`,'bad');
     toast(`Wrong. ${p.first} actually had ${c.n}. They left without paying.`,'bad');gone(p)}
 }
 function sendTo(p,d){
@@ -1679,7 +1727,7 @@ function transfer(p){
   toast(`${p.first} transferred${amt?` · +${fmt$(amt)}`:''}`,'warn');gone(p);
 }
 function finishTreat(p,d){
-  const c=cond(p);p.bill+=c.tx[2];const amt=Math.round(p.bill*p.cov);S.money+=amt;S.st.revenue+=amt;S.st.treated++;rep(2);
+  const c=cond(p);countTreat(p,d||p.loc);p.bill+=c.tx[2];const amt=Math.round(p.bill*p.cov);S.money+=amt;S.st.revenue+=amt;S.st.treated++;rep(2);
   log(`${pname(p)} treated for ${c.n}. Collected ${fmt$(amt)} (${p.ins}).`,'good');toast(`${p.first} treated · +${fmt$(amt)}`,'good');
   p.treated=true;p.busy=null;p.deadline=null;
   if(c.los&&d&&S.depts[d]){removeFrom(p);p.loc=d;p.inW=false;p.tq=[];S.depts[d].adm.push(p.id);p.adm={d,start:S.t,until:S.t+c.los*DAY,days:c.los};p.v++;
@@ -1689,7 +1737,7 @@ function finishTreat(p,d){
 function dischargeAdm(p){
   if(!p.adm||!p.adm.ready)return;const c=cond(p);const room=c.los*roomRate(p.adm.d);const amt=Math.round(room*p.cov);
   S.money+=amt;S.st.revenue+=amt;log(`${pname(p)} discharged. Room charges ${fmt$(amt)}.`,'good');toast(`${p.first} discharged · +${fmt$(amt)} room charges`,'good');
-  p.adm=null;toPharmOrHome(p);
+  S.st.bedDis=(S.st.bedDis||0)+1;p.adm=null;toPharmOrHome(p);
 }
 function toPharmOrHome(p){
   if(!cond(p).rx.length){log(`${pname(p)} went home. No medication needed.`);gone(p);return}
@@ -1701,7 +1749,7 @@ function dispense(p,ids){
   if(!S.depts.pharm.lead)return;const c=cond(p);const need=new Set(c.rx);
   let good=0,bad=0,rev=0;ids.forEach(id=>{if(need.has(id)){good++;rev+=MEDS[id].price}else bad++});
   const missed=c.rx.length-good;rev=Math.round(rev*p.cov);S.money+=rev;S.st.revenue+=rev;
-  if(!missed&&!bad){rep(2);log(`Pharmacy: perfect prescription for ${pname(p)}. +${fmt$(rev)}`,'good');toast(`Perfect prescription · +${fmt$(rev)}`,'good')}
+  if(!missed&&!bad){S.st.rx=(S.st.rx||0)+1;rep(2);log(`Pharmacy: perfect prescription for ${pname(p)}. +${fmt$(rev)}`,'good');toast(`Perfect prescription · +${fmt$(rev)}`,'good')}
   else{rep(-(missed+bad));const want=c.rx.map(r=>MEDS[r].name).join(', ');
     log(`Pharmacy: ${pname(p)} got ${good}/${c.rx.length} right${bad?`, ${bad} unneeded`:''}. Standard: ${want}.`,'warn');
     toast(`Standard for ${c.n}: ${want}`,'warn')}
@@ -1743,7 +1791,8 @@ function step(dt){
   evtTick();
   apptTick(); /* clinic appointments always keep coming */
   if(S.intakeOff)S.next+=dt; /* intake off: walk-in timer freezes */
-  while(!S.intakeOff&&S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
+  insTick();
+  while(!S.intakeOff&&S.t>=S.next){arrive();S.next+=nextGap()}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
   if(today!==S.payDate){S.payDate=today}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
@@ -1792,6 +1841,7 @@ function renderSide(){
   h+=item('pts','PTS','Patients',`<span class="${ptIdle?'idle':''}" title="${ptIdle} need${ptIdle===1?'s':''} you · ${ptAll.length} total">${ptIdle}/${ptAll.length}</span>`,200,0,0);opts+=`<option value="pts" ${S.view==='pts'?'selected':''}>Patients (${ptIdle}/${ptAll.length})</option>`;
   {const stN=allStaff().length+DEPTS.filter(d=>S.depts[d.id].on&&!hasNamedClin(d.id)&&!NAMED_ROLE[d.id]).reduce((n,d)=>n+(S.depts[d.id].lead||0),0);
    h+=item('staff','STAF','Staff',`<span title="${stN} on staff">${stN}</span>`,150,0,0);opts+=`<option value="staff" ${S.view==='staff'?'selected':''}>Staff (${stN})</option>`}
+  {const a=insOn().length;h+=item('ins','INS','Insurance',`<span title="${perDay()} patients per day">${a}/${INS.length}</span>`,45,0,0);opts+=`<option value="ins" ${S.view==='ins'?'selected':''}>Insurance (${a}/${INS.length})</option>`}
   on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;needAll+=idle;{const r=redIn(all),cl=colIn(all);opts+=`<option value="${d.id}" ${S.view===d.id?'selected':''}>${cl?'⚠ ':r?'❗':''}${esc(d.name)} (${idle}/${all.length})</option>`}h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
   h+=`</div><div class="wardpick"><label for="wardSel">Go to</label><select id="wardSel">${opts}${S.depts[S.view]&&!S.depts[S.view].on?`<option value="${S.view}" selected>${esc(DEPT[S.view].name)} (locked)</option>`:''}</select>${needAll?`<span class="wneed">${needAll} need${needAll===1?'s':''} you</span>`:''}</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
@@ -1953,6 +2003,15 @@ function staffLink(v){const D=S.depts[v];
   const parts=staffGroups(v).map(([role,label,,])=>{const n=role?(D.staff||[]).filter(x=>x.role===role).length:(D.lead||0);const one=label.replace(/s$/,'').toLowerCase();
     return `<span class="${n?'':'warnnote'}">${n} ${n===1?one:label.toLowerCase()}</span>`});
   return `<div class="stlink"><b>Staff</b>${parts.join('<span class="sep">·</span>')}<button class="btn sm" data-act="view" data-v="staff">Manage staff</button></div>`}
+function insHTML(){const on=insOn(),pd=perDay();
+  let h=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:45">INS</span><div><h1>Insurance</h1>
+    <p>Every plan you accept sends more patients each game day. Unlock new plans for free by completing their challenges.</p></div></div>
+    <div class="ptsum mono"><span><b>${pd}</b> patients per day</span><span><b>${on.length}</b> of ${INS.length} plans accepted</span><span>about 1 every <b>${fmtDur(Math.round(1440/pd))}</b></span></div></div><div class="inslist">`;
+  INS.forEach(i=>{const ok=S.ins[i.id];const [v,n]=insProgress(i);const pct=Math.round(v/n*100);
+    h+=`<div class="inscard ${ok?'on':''}"><div class="insh"><b>${esc(i.n)}</b>${ok?'<span class="insok">✓ Accepted</span>':'<span class="inslock">Locked</span>'}</div>
+      <div class="insm mono"><span>+${i.day} patients/day</span><span>Pays ${Math.round(i.c*100)}% of charges</span>${i.senior?'<span>Patients 65+ only</span>':''}</div>
+      ${ok?(i.goal?`<div class="insc done">Unlocked: ${esc(i.txt)}</div>`:'<div class="insc done">Accepted from the start</div>'):`<div class="insc">${esc(i.txt)}</div><div class="insbar"><i style="width:${pct}%"></i></div><div class="insp mono">${i.goal.k==='earn'?fmt$(v)+' / '+fmt$(n):v+' / '+n}</div>`}</div>`});
+  return h+'</div>'}
 function staffHTML(){
   const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>a.name.localeCompare(b.name));
   const all=allStaff(),busy=all.filter(x=>staffBusyWith(x.id)).length,sick=all.filter(x=>isSick(x)).length;
@@ -1977,6 +2036,7 @@ function renderMain(){
   const m=document.getElementById('main');let h='';const v=S.view;
   if(v==='pts'){mainMode='pts';m.innerHTML=patientsHTML()+logHTML();return}
   if(v==='staff'){mainMode='staff';m.innerHTML=staffHTML();return}
+  if(v==='ins'){mainMode='ins';m.innerHTML=insHTML();return}
   if(v==='book'){
     if(mainMode!=='book'){m.innerHTML=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:280">BOOK</span><div><h1>Casebook</h1>
       <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. Starting a new game clears it.</p></div></div></div>
@@ -1988,7 +2048,7 @@ function renderMain(){
   mainMode=v;
   if(v==='rec'){
     h+=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:40">DESK</span><div><h1>Reception &amp; Check-in</h1>
-      <p>New patient every ${ARRIVAL} minutes. Click one to read their complaint and route them.</p></div></div></div>
+      <p>Patients arrive at random. Click one to read their complaint and route them.</p></div></div></div>
       <section class="zone"><div class="zone-h"><h2>Check-in queue</h2><span class="cap">${S.rec.length}/${RECMAX}</span><span class="note">Sort by color: red first.</span></div>
       ${slots([...S.rec].sort((a,b)=>'ryg'.indexOf(cond(S.P[a]).p)-'ryg'.indexOf(cond(S.P[b]).p)),RECMAX,'Desk')}</section>`;
   } else {
@@ -2282,7 +2342,7 @@ function start(data){
   S=(data&&data.state)||load();
   if(S)S.speed=SPEEDS.includes(S.speed)?S.speed:S.speed?1:0;
   if(S&&S.depts.pharm&&(S.depts.pharm.w||[]).length){const P=S.depts.pharm;P.w.forEach(id=>{if(S.P[id]){S.P[id].inW=false;P.q.push(id)}});P.w=[]}
-  if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();dedupeStaff();
+  if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();dedupeStaff();insInit();
     const I=S.depts.icu;if(!I.icuV){I.icuV=1;I.beds=Math.max(I.beds||0,ICU_START);I.dxr=I.dxr||[];const mv=[...(I.q||[]),...(I.w||[]),...(I.tri||[])];I.q=[];I.w=[];I.tri=[];
       mv.forEach(id=>{const p=S.P[id];if(!p)return;I.dxr.push(id);p.stage='icu';p.nurse=null;p.doc=p.doc||null;p.inW=false});(I.dxr||[]).forEach(id=>{if(S.P[id])S.P[id].stage='icu'})}}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
