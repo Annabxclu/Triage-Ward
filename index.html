@@ -460,9 +460,9 @@ const DEPTS = [
  ['uro','Urology','URO',14000,'clinic'],
 ].map((d,i)=>({id:d[0],name:d[1],code:d[2],cost:d[3],kind:d[4],hue:Math.round((i*137.5+195)%360)}));
 const DEPT = Object.fromEntries(DEPTS.map(d=>[d.id,d]));
-const ROLE = {clinic:['Doctors',1400],lab:['Lab techs',600],rad:['Rad techs',900],pharm:['Pharmacists',900],path:['Pathologists',1000]};
+const ROLE = {clinic:['Doctors',0],lab:['Lab techs',0],rad:['Rad techs',0],pharm:['Pharmacists',0],path:['Pathologists',0]}; /* staff are free: no hiring cost, no payroll */
 function leadRole(d){return ROLE[d==='lab'?'lab':d==='rad'?'rad':DEPT[d].kind==='pharm'?'pharm':DEPT[d].kind==='path'?'path':'clinic']}
-const NURSE_PAY = 450, TQMAX = 3;
+const NURSE_PAY = 0, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
 const PAT = {r:60, y:90, g:120};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
@@ -1446,7 +1446,7 @@ function arrive(force){
 
 /* ---------- ER: triage → waiting room / diagnostic room ---------- */
 const NURSE_EX=['hx','vitals','spo2','gluc','ecg','ua','hcg','strep','flu','phq','wound','weight','immun'];
-const ROOM_COST=4000, ROOMMAX=6, DOC_PAY=1400;
+const ROOM_COST=4000, ROOMMAX=6, DOC_PAY=0;
 const STAGE={queue:'ER queue',tri:'Triage room',wait:'ER waiting room',dx:'Diagnostic room'};
 const isFlow=d=>!!(DEPT[d]&&DEPT[d].kind==='clinic'&&d!=='icu');
 const isICU=d=>d==='icu';
@@ -1624,8 +1624,7 @@ function step(dt){
   evtTick();apptTick();
   while(S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
-  if(today!==S.payDate){S.payDate=today;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
-    S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
+  if(today!==S.payDate){S.payDate=today}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
     if(p.deadline&&isICU(p.loc))p.deadline+=dt; /* only an ICU bed stops the clock */
@@ -1736,11 +1735,11 @@ function recoveryZone(v){const D=S.depts[v],nb=D.beds||0,o=isObs(v);
     ${slots(D.adm,nb,o?'Observation':'Recovery')}</section>`}
 function staffRowHTML(v){const d=DEPT[v],D=S.depts[v],role=leadRole(v);
   return `<div class="staffrow">
-         <div class="staff"><span class="role">${role[0]}</span><button data-act="fire" data-d="${v}" data-r="lead" ${D.lead?'':'disabled'} aria-label="Let one go">−</button><b>${D.lead}</b><button data-act="hire" data-d="${v}" data-r="lead" ${S.money<role[1]?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(role[1])}/day</span></div>
-         ${d.kind==='clinic'?`<div class="staff"><span class="role">Nurses</span><button data-act="fire" data-d="${v}" data-r="nurse" ${D.nurse?'':'disabled'} aria-label="Let one go">−</button><b>${D.nurse}</b><button data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(NURSE_PAY)}/day · −10% test time each</span></div>`:''}</div></div>`}
+         <div class="staff"><span class="role">${role[0]}</span><button data-act="fire" data-d="${v}" data-r="lead" ${D.lead?'':'disabled'} aria-label="Let one go">−</button><b>${D.lead}</b><button data-act="hire" data-d="${v}" data-r="lead" ${S.money<role[1]?'disabled':''} aria-label="Hire one">+</button></div>
+         ${d.kind==='clinic'?`<div class="staff"><span class="role">Nurses</span><button data-act="fire" data-d="${v}" data-r="nurse" ${D.nurse?'':'disabled'} aria-label="Let one go">−</button><b>${D.nurse}</b><button data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''} aria-label="Hire one">+</button><span class="sal">−10% test time each</span></div>`:''}</div></div>`}
 function techRoster(v){const D=S.depts[v],role=NAMED_ROLE[v],pay=leadRole(v)[1];
   const ppl=(D.staff||[]).map(x=>{const w=staffBusyWith(x.id);return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff. Hire one to run tests.</span>';
-  return `<div class="roster"><div class="rgrp"><div class="rh"><b>${ROLE_TITLE[role]}s</b><span class="sal">${fmt$(pay)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<pay?'disabled':''}>Hire ${ROLE_TITLE[role].toLowerCase()}</button></div><div class="people">${ppl}</div>
+  return `<div class="roster"><div class="rgrp"><div class="rh"><b>${ROLE_TITLE[role]}s</b><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<pay?'disabled':''}>Hire ${ROLE_TITLE[role].toLowerCase()}</button></div><div class="people">${ppl}</div>
     <div class="tests"><span>Open a patient and assign a ${ROLE_TITLE[role].toLowerCase()}. They run the doctor's orders, then free up.</span></div></div></div>`}
 function icuView(){const d=DEPT.icu,D=S.depts.icu,used=D.dxr.length+D.adm.length;
   const roster=role=>(D.staff||[]).filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
@@ -1748,9 +1747,9 @@ function icuView(){const d=DEPT.icu,D=S.depts.icu,used=D.dxr.length+D.adm.length
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Critical and collapsed patients go straight into a bed. Their clock stops while they're here.</p></div></div></div>
    <div class="roster">
-    <div class="rgrp"><div class="rh"><b>Nurses</b><span class="sal">${fmt$(NURSE_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="icu" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
+    <div class="rgrp"><div class="rh"><b>Nurses</b><button class="btn sm" data-act="hire" data-d="icu" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
      <div class="tests"><span>ICU nurses run nurse tests at the bedside.</span></div></div>
-    <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="icu" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
+    <div class="rgrp"><div class="rh"><b>Doctors</b><button class="btn sm" data-act="hire" data-d="icu" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
      <div class="tests"><span>ICU doctors run every ICU test, diagnose and treat.</span></div></div>
    </div>
    <section class="zone"><div class="zone-h"><h2>ICU beds</h2><span class="cap">${used}/${D.beds} · ${fmt$(roomRate('icu'))} per ${fmtDur(DAY)} of recovery</span>
@@ -1774,9 +1773,9 @@ function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Queue, then a triage room with a nurse, then the waiting room or a diagnostic room with a doctor.</p></div></div></div>
    <div class="roster">
-    <div class="rgrp"><div class="rh"><b>Nurses</b><span class="sal">${fmt$(NURSE_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
+    <div class="rgrp"><div class="rh"><b>Nurses</b><button class="btn sm" data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
      <div class="tests"><span>Nurse tests:</span>${NURSE_EX.filter(x=>examHere(x,v)).map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div></div>
-    <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
+    <div class="rgrp"><div class="rh"><b>Doctors</b><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
      <div class="tests"><span>Doctors run every test here, diagnose and treat.${er?'':` Tests here: ${esc(EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v)).map(x=>EXAMS[x].name).join(', ')||'basic exams only')}.`}</span></div></div>
    </div>
    ${v==='clinic'?apptZone():''}
