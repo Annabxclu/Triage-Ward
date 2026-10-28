@@ -124,6 +124,10 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 6px}
 .stats div{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 .stats b{font-family:var(--f-mono);color:var(--ink)}
+.stats .earned{grid-column:1 / -1;font-size:13px;color:var(--ink);font-weight:600;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:2px}
+.stats .earned b{color:var(--green);font-size:15px;border-radius:4px;padding:0 4px}
+.stats .earned b{transition:background .6s}
+.stats .earned b.up{background:color-mix(in srgb,var(--green) 28%,transparent)}
 details.help{padding:0 6px;font-size:13px;color:var(--muted)}
 details.help summary{cursor:pointer;color:var(--ink);font-weight:700}
 details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
@@ -1795,6 +1799,7 @@ function renderSide(){
     <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
   h+=`</div></details>
   <div class="totals"><h3>Shift totals</h3><div class="stats">
+   <div class="earned">Money earned <b id="earned">${fmt$(S.st.revenue||0)}</b></div>
    <div>Treated <b>${S.st.treated}</b></div><div>Transferred <b>${S.st.xfer}</b></div>
    <div>Left <b>${S.st.left}</b></div><div>Died <b>${S.st.died}</b></div>
    <div>Misdiagnosed <b>${S.st.misdx}</b></div><div>Turned away <b>${S.st.away}</b></div></div></div>
@@ -2172,9 +2177,11 @@ function renderTop(){
   const ib=document.getElementById('intakeBtn');if(ib){ib.textContent=S.intakeOff?'Intake off':'Intake on';ib.classList.toggle('off',!!S.intakeOff);ib.setAttribute('aria-pressed',S.intakeOff?'false':'true')}
   const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
+let lastEarned=null,earnFlashUntil=0;
 function tickUI(){
   document.getElementById('clock').innerHTML=`<span>Day ${gameDay(S.t)}</span> <span>${gameClock(S.t)}</span>${S.speed?'':' <span>· Paused</span>'}`;
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
+  {const el=document.getElementById('earned');if(el){const v=S.st.revenue||0;if(lastEarned!=null&&v>lastEarned)earnFlashUntil=Date.now()+1200;lastEarned=v;el.classList.toggle('up',Date.now()<earnFlashUntil);el.textContent=fmt$(v)}}
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
   document.querySelectorAll('[data-appt]').forEach(el=>{el.textContent=fmtCountdown(+el.dataset.appt-S.t)});
