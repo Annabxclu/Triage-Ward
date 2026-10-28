@@ -1182,8 +1182,8 @@ function step(dt){
     S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
-    if(p.deadline&&beingSeen(p))p.deadline+=dt;
-    else if(p.deadline&&!p.collapsed&&!p.treated&&p.loc!=='morgue'){const pr=cond(p).p,rate=pr==='r'?1/45:pr==='y'?1/700:0;
+    if(p.deadline&&isICU(p.loc))p.deadline+=dt; /* only an ICU bed stops the clock */
+    else if(p.deadline&&!p.collapsed&&!p.treated&&p.loc!=='morgue'&&!beingSeen(p)){const pr=cond(p).p,rate=pr==='r'?1/45:pr==='y'?1/700:0;
       if(rate&&Math.random()<1-Math.pow(1-rate,dt)){p.collapsed=true;p.deadline=Math.min(p.deadline,S.t+15);p.v++;dirty=true;
         const where=p.loc==='rec'?'Reception':`${DEPT[p.loc].name}${p.stage?' · '+(stageName(p)||''):''}`;
         log(`${pname(p)} collapsed in ${where}. Get them to the ICU or treat now.`,'bad');toast(`⚠ ${p.first} ${p.last} collapsed in ${where}!`,'bad')}}
@@ -1540,8 +1540,8 @@ function tickUI(){
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
     else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
-    const ps=beingSeen(p);el.textContent=el.classList.contains('tag')?`${ps?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10&&!ps);el.classList.toggle('paused',ps)});
-  document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=`${beingSeen(p)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
+    const ps=isICU(p.loc);el.textContent=el.classList.contains('tag')?`${ps?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10&&!ps);el.classList.toggle('paused',ps)});
+  document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=`${isICU(p.loc)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
   document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${fmtDur(Math.ceil(p.adm.until-S.t))} left`});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${fmtDur(Math.ceil(p.busy.end-S.t))} left`});
 }
