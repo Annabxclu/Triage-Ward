@@ -358,6 +358,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
     <div class="meters">
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
+      <div class="meter"><small>Patients</small><b id="ptCount">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
       <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
@@ -1603,6 +1604,7 @@ function renderTop(){
 function tickUI(){
   document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
+  document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.getElementById('nextArr').textContent=fmtDur(Math.ceil(S.next-S.t));
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
