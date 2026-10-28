@@ -161,6 +161,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .bar.r i{background:var(--red)} .bar.y i{background:var(--amber)} .bar.g i{background:var(--green)}
 .bar.busy i{background:var(--accent)}
 .timeline{display:block;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.timeline .paused,.tag.paused{opacity:.65}
 .timeline .urgent{color:var(--red);font-weight:600}
 .empty-note{color:var(--muted);font-size:13px}
 .logbox{border-top:1px solid var(--line);padding-top:12px}
@@ -797,6 +798,8 @@ function complete(p){
 }
 
 /* ---------- simulation ---------- */
+/* the leave / critical clock only runs while a patient is waiting (reception, a queue, a waiting room) */
+function beingSeen(p){if(p.busy||p.adm)return true;if(p.loc==='er')return p.stage==='tri'||p.stage==='dx';if(NAMED_ROLE[p.loc])return !!p.tech;return false}
 function step(dt){
   S.t+=dt;
   while(S.t>=S.next){arrive();S.next+=ARRIVAL}
@@ -805,6 +808,7 @@ function step(dt){
     S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
+    if(p.deadline&&beingSeen(p))p.deadline+=dt;
     if(p.deadline&&S.t>=p.deadline&&!(p.busy&&p.busy.k==='treat')){if(cond(p).p==='r')die(p);else leave(p);continue}
     if(p.adm&&!p.adm.ready&&S.t>=p.adm.until){p.adm.ready=true;p.v++;dirty=true;log(`${pname(p)} is ready for discharge from ${DEPT[p.adm.d].name}.`,'good')}
     if(p.loc==='pharm'&&S.t-p.phT>180){log(`${pname(p)} left the pharmacy line with a paper prescription.`);gone(p)}
@@ -880,7 +884,7 @@ function card(p){
    <span class="meta">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span>
    <span class="status ${cls}">${st}</span>${ordLine}
    ${showBar?`<span class="bar ${p.busy||p.adm?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
-   ${p.deadline&&!p.busy?`<span class="timeline">Leaves in <span data-dlt="${p.id}"></span></span>`:''}
+   ${p.deadline&&!p.busy?`<span class="timeline"><span data-dlw="${p.id}">${c.p==='r'?'Critical in':'Leaves in'}</span> <span data-dlt="${p.id}"></span></span>`:''}
   </button>`;
 }
 function slots(ids,max,label,compact){
@@ -1130,7 +1134,8 @@ function tickUI(){
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
     else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
-    el.textContent=el.classList.contains('tag')?`${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10)});
+    const ps=beingSeen(p);el.textContent=el.classList.contains('tag')?`${ps?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10&&!ps);el.classList.toggle('paused',ps)});
+  document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=`${beingSeen(p)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
   document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${fmtDur(Math.ceil(p.adm.until-S.t))} left`});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${fmtDur(Math.ceil(p.busy.end-S.t))} left`});
 }
