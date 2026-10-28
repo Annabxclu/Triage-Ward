@@ -1234,6 +1234,13 @@ function complete(p){
 /* ---------- simulation ---------- */
 /* the leave / critical clock only runs while a patient is waiting (reception, a queue, a waiting room) */
 function beingSeen(p){if(p.busy||p.adm)return true;if(isICU(p.loc))return true;if(isFlow(p.loc))return p.stage==='tri'||p.stage==='dx';if(NAMED_ROLE[p.loc])return !!p.tech;return false}
+/* free staff are assigned automatically: red patients first, then by arrival */
+function autoAssign(){if(!S)return;const ps=Object.values(S.P).sort((a,b)=>'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||a.arr-b.arr);
+  const take=(role,d)=>freeStaff(role,d)[0];
+  for(const p of ps){
+    if(isFlow(p.loc)){if(p.stage==='tri'&&!p.nurse){const x=take('nurse',p.loc);if(x)assignStaff(p,x.id)}else if(p.stage==='dx'&&!p.doc){const x=take('doctor',p.loc);if(x)assignStaff(p,x.id)}}
+    else if(isICU(p.loc)&&p.stage==='icu'){if(!p.doc){const x=take('doctor','icu');if(x)assignStaff(p,x.id)}if(!p.nurse){const x=take('nurse','icu');if(x)assignStaff(p,x.id)}}
+    else if(NAMED_ROLE[p.loc]&&!p.tech&&!p.inW&&ordersHere(p,p.loc).length){const x=take(NAMED_ROLE[p.loc],p.loc);if(x)assignStaff(p,x.id)}}}
 function step(dt){
   S.t+=dt;
   while(S.t>=S.next){arrive();S.next+=ARRIVAL}
@@ -1251,6 +1258,7 @@ function step(dt){
     if(p.adm&&!p.adm.ready&&S.t>=p.adm.until){p.adm.ready=true;p.v++;dirty=true;log(`${pname(p)} is ready for discharge from ${DEPT[p.adm.d].name}.`,'good')}
     if(p.loc==='pharm'&&S.t-p.phT>180){log(`${pname(p)} left the pharmacy line with a paper prescription.`);gone(p)}
   }
+  autoAssign();
   Object.values(S.P).filter(p=>p.tq&&p.tq.length&&!p.busy).sort((a,b)=>'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||a.arr-b.arr).forEach(tryNext);
   Object.values(S.P).forEach(p=>{if(p.tech&&p.techAuto&&!p.busy&&!(p.tq&&p.tq.length)){const x=staffById(p.tech);p.tech=null;p.techAuto=false;p.v++;dirty=true;
     log(`${staffName(x)} finished ${pname(p)}'s ordered tests.${p.from?` Return them to ${DEPT[p.from].name}.`:''}`,'good')}});
@@ -1582,7 +1590,7 @@ function renderChart(){
   const ae=document.activeElement;
   if(chartKey===p.id&&ae&&el.contains(ae)&&ae.tagName==='SELECT'){chartPending=true;return}
   const keep={};el.querySelectorAll('select,input[type=checkbox]').forEach(i=>keep[i.id]=i.type==='checkbox'?i.checked:i.value);
-  const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;
+  const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;if(chartKey!==p.id)el.scrollTop=0;
   if(chartKey===p.id){for(const k in keep){const i=document.getElementById(k);if(!i)continue;
     if(i.type==='checkbox')i.checked=keep[k];else if([...i.options].some(o=>o.value===keep[k]&&!o.disabled))i.value=keep[k]}el.scrollTop=sc}
   chartKey=p.id;chartPending=false;
@@ -1662,7 +1670,7 @@ document.addEventListener('click',e=>{
     case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){S=null;try{localStorage.removeItem(KEY)}catch(e){}nb.textContent='New game';render();return}
       confirmNew=Date.now();nb.textContent='Tap again to reset';setTimeout(()=>{nb.textContent='New game'},3000);return}
   }
-  dirty=true;render();
+  autoAssign();dirty=true;render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
 document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
