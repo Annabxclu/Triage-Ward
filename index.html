@@ -326,7 +326,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <li>A patient reaches Reception every 5 minutes. Up to 10 can wait at check-in.</li>
         <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
-        <li>At 1× a game minute is 15 real seconds, so a red patient's 30 minutes is about 7½ real minutes. Use 2× or 4× for quiet stretches. Closing the page pauses your hospital.</li>
+        <li>Everything runs on real time: a 20-minute CT takes 20 real minutes. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
     </form>
@@ -340,12 +340,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
-      <div class="speed" id="speed" role="group" aria-label="Game speed">
-        <button data-act="speed" data-s="0" title="Pause">Pause</button>
-        <button data-act="speed" data-s="1">1×</button>
-        <button data-act="speed" data-s="2">2×</button>
-        <button data-act="speed" data-s="4">4×</button>
-      </div>
+      <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
       <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
     </div>
@@ -391,7 +386,7 @@ const NURSE_PAY = 450, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
 const PAT = {r:30, y:150, g:300};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
-const MS_PER_MIN = 15000; // at 1×: one game minute = 15 real seconds, one game day = 6 real hours
+const MS_PER_MIN = 60000; // real time: one minute is one minute
 
 const EXAMS = {};
 function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min,cost,depts,norm}}
@@ -811,8 +806,8 @@ function beingSeen(p){if(p.busy||p.adm)return true;if(isFlow(p.loc))return p.sta
 function step(dt){
   S.t+=dt;
   while(S.t>=S.next){arrive();S.next+=ARRIVAL}
-  const day=Math.floor((480+S.t)/1440);if(S.day==null)S.day=day;
-  if(day>S.day){S.day=day;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
+  const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
+  if(today!==S.payDate){S.payDate=today;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
     S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
     if(p.busy&&S.t>=p.busy.end){complete(p);if(!S.P[id])continue}
@@ -942,7 +937,7 @@ function erFlowHTML(p){const D=S.depts[p.loc];let h='';const b=p.busy?'disabled'
   else if(p.stage==='dx')h=`${p.doc?`<p class="flowtxt">With <b>${esc(staffName(staffById(p.doc)))}</b>.</p>`:`<p class="flowtxt">In a diagnostic room. Assign a doctor:</p><div class="line wrap">${pickBtns('doctor')}</div>`}
      <div class="line wrap"><button class="btn sm" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>Back to waiting room (${D.w.length}/${WMAX})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ${qn} (${D.q.length}/${QMAX})</button></div>`;
   return h?`<div class="sec"><h3>${esc(DEPT[p.loc].name)} <span>${esc(stageName(p)||'')}</span></h3><div class="act">${h}</div></div>`:''}
-function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
+function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${l.at?realTime(l.at):hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
 
 function renderMain(){
   const m=document.getElementById('main');let h='';const v=S.view;
@@ -1131,10 +1126,10 @@ function renderChart(){
 function renderTop(){
   document.getElementById('hn').textContent=S.name;
   document.getElementById('testBtn').classList.toggle('on',!!S.test);
-  document.querySelectorAll('#speed button').forEach(b=>b.classList.toggle('on',+b.dataset.s===S.speed));
+  const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
 function tickUI(){
-  document.getElementById('clock').textContent=S.speed?clockStr(S.t):`Paused · ${clockStr(S.t)}`;
+  document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('nextArr').textContent=S.rec.length>=RECMAX?'Desk full':fmtDur(Math.ceil(S.next-S.t));
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
@@ -1171,7 +1166,7 @@ document.addEventListener('click',e=>{
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
     case 'tclear':[...S.rec].forEach(id=>gone(S.P[id]));toast('Reception cleared.');break;
     case 'tspawn':{if(S.rec.length>=RECMAX){toast('Reception is full.');return}const v=document.getElementById('testCond').value;arrive(v===''?null:+v);S.view='rec';break}
-    case 'speed':S.speed=+b.dataset.s;break;
+    case 'pause':S.speed=S.speed?0:1;break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'order':{if(!p)return;const x=b.dataset.x;p.orders=p.orders||[];const i=p.orders.indexOf(x);if(i>=0)p.orders.splice(i,1);else p.orders.push(x);p.v++;break}
     case 'treat':p&&startTreat(p);break;
@@ -1212,7 +1207,7 @@ function loop(){
 }
 function start(data){
   S=(data&&data.state)||load();
-  if(S&&![0,1,2,4].includes(S.speed))S.speed=1;
+  if(S)S.speed=S.speed?1:0;
   if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
   render();setInterval(loop,200);
