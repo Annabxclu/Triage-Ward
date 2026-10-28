@@ -1491,7 +1491,7 @@ function icuFlowHTML(p){const D=S.depts.icu;const b=p.busy?'disabled':'';
   </div></div>`}
 function apptZone(){const up=(S.appts||[]).filter(a=>a.at>S.t&&a.at<=S.t+60);
   return `<section class="zone"><div class="zone-h"><h2>Upcoming appointments</h2><span class="cap">${up.length} in the next hour</span><span class="note">Booked patients arrive on time, on top of walk-ins.</span></div>
-   <div class="appts">${up.length?up.map(a=>`<span class="apptchip">in <b class="mono">${fmtDur(Math.max(1,Math.round(a.at-S.t)))}</b></span>`).join(''):'<span class="empty-note">No more appointments this hour.</span>'}</div></section>`}
+   <div class="appts">${up.length?up.map(a=>`<span class="apptchip">in <b class="mono" data-appt="${a.at}">${fmtCountdown(a.at-S.t)}</b></span>`).join(''):'<span class="empty-note">No more appointments this hour.</span>'}</div></section>`}
 function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   const roster=role=>D.staff.filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
     return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
@@ -1718,6 +1718,7 @@ function tickUI(){
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
+  document.querySelectorAll('[data-appt]').forEach(el=>{el.textContent=fmtCountdown(+el.dataset.appt-S.t)});
   document.getElementById('nextArr').textContent=fmtCountdown(S.next-S.t);
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
