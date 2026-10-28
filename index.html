@@ -175,7 +175,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .case .cdesc{margin:6px 0 8px;font-size:13.5px;line-height:1.45;color:var(--ink);font-style:italic}
 .ptsum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .ptsum b{color:var(--ink)}.ptsum .idle b{color:var(--amber)}
-.ptlist{display:grid;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden;margin-top:14px}
+.ptlist{flex:none;display:grid;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden;margin-top:14px}
 .ptrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,1.5fr) 150px;gap:12px;align-items:center;padding:10px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
 .ptrow:hover{background:var(--panel2)}.ptrow.sel{box-shadow:inset 3px 0 0 var(--accent);background:var(--panel2)}
 .ptrow.collapsed{box-shadow:inset 3px 0 0 var(--red)}
@@ -435,7 +435,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       </div>
       <ul>
         <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
-        <li>A new patient arrives every 5 minutes and goes straight to the department for their condition.</li>
+        <li>A new patient arrives every 8 minutes and goes straight to the department for their condition.</li>
         <li>Red patients have 1 hour. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
         <li>Everything runs on real time: a 10-minute CT head takes 10 real minutes. Closing the page pauses your hospital.</li>
@@ -500,7 +500,7 @@ const DEPT = Object.fromEntries(DEPTS.map(d=>[d.id,d]));
 const ROLE = {clinic:['Doctors',1400],lab:['Lab techs',600],rad:['Rad techs',900],pharm:['Pharmacists',900],path:['Pathologists',1000]}; /* one-time hiring cost; no daily payroll */
 function leadRole(d){return ROLE[d==='lab'?'lab':d==='rad'?'rad':DEPT[d].kind==='pharm'?'pharm':DEPT[d].kind==='path'?'path':'clinic']}
 const NURSE_PAY = 450, TQMAX = 3;
-const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
+const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 8;
 const PAT = {r:60, y:90, g:120};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
 const MS_PER_MIN = 60000; // real time: one minute is one minute
@@ -1504,7 +1504,8 @@ const qName=d=>d==='er'?'ER queue':'queue';
 const NAMED_ROLE={lab:'labtech',rad:'radtech'};
 const ROLE_TITLE={doctor:'Dr.',nurse:'Nurse',labtech:'Lab Tech',radtech:'Rad Tech',surgeon:'Surgeon',anes:'Anesthesiologist'};
 const SURGEON_PAY=2500, ANES_PAY=2000, OR_COST=10000, ORMAX=4;
-const hasOR=d=>isFlow(d)&&d!=='clinic'&&SURG_DEPTS.has(d);
+const hasOR=d=>isFlow(d)&&d!=='clinic'&&d!=='er'&&SURG_DEPTS.has(d); /* the ER does not operate */
+const surgWards=c=>c.t.filter(hasOR);
 const orIds=d=>Object.values(S.P).filter(p=>p.adm&&p.adm.d===d&&p.adm.surg==='or').map(p=>p.id);
 const preopIds=d=>Object.values(S.P).filter(p=>p.adm&&p.adm.d===d&&p.adm.surg==='wait').map(p=>p.id);
 function allStaff(){return DEPTS.map(d=>d.id).flatMap(d=>(S.depts[d]&&S.depts[d].staff)||[])}
@@ -1516,7 +1517,7 @@ function uniqueStaffName(used){const pool=STAFF_LAST.filter(l=>!used.has(l));if(
 function hireNamed(role,d='er'){const D=S.depts[d];if(!D.staff)D.staff=[];const used=new Set(allStaff().map(x=>x.last));
   D.staff.push({id:'s'+(S.seq++),role,d,last:uniqueStaffName(used)});syncStaff(d)}
 function dedupeStaff(){const used=new Set();allStaff().forEach(x=>{if(used.has(x.last)||/ \d+$/.test(x.last)){x.last=uniqueStaffName(used)}used.add(x.last)})}
-function erInit(){DEPTS.filter(d=>d.kind==='clinic').forEach(dd=>{const d=dd.id,D=S.depts[d];if(!D.tri)D.tri=[];if(!D.dxr)D.dxr=[];if(!D.triRooms)D.triRooms=2;if(!D.dxRooms)D.dxRooms=2;if(D.orRooms==null)D.orRooms=d==='er'?1:0;
+function erInit(){DEPTS.filter(d=>d.kind==='clinic').forEach(dd=>{const d=dd.id,D=S.depts[d];if(!D.tri)D.tri=[];if(!D.dxr)D.dxr=[];if(!D.triRooms)D.triRooms=2;if(!D.dxRooms)D.dxRooms=2;if(D.orRooms==null)D.orRooms=0;
   if(!D.staff){const n=D.nurse,l=D.lead;D.staff=[];for(let i=0;i<n;i++)hireNamed('nurse',d);for(let i=0;i<l;i++)hireNamed('doctor',d)}syncStaff(d);
     const old=[...D.q,...D.w].filter(id=>S.P[id]&&!S.P[id].stage);
     if(old.length){D.q=D.q.filter(id=>!old.includes(id));D.w=D.w.filter(id=>!old.includes(id));
@@ -2045,7 +2046,7 @@ function chartHTML(p){
   if(p.dx===p.c){
     const here=c.t.includes(L);
     h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>${c.surg&&hasOR(L)?'Surgery':'Treatment'}: ${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}${c.los?`<br>Then ${fmtDur(c.los*DAY)} in ${here&&isObs(L)?'an observation room':'a recovery bed'}`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
-     ${here&&c.surg&&hasOR(L)?surgAdmitHTML(p):here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${isFlow(L)?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
+     ${c.surg&&isFlow(L)&&!hasOR(L)?`<div class="callout surgcall"><b>Requires surgery.</b> ${esc(DEPT[L].name)} doesn't operate. Send them to ${esc(surgWards(c).map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(' or ')||'a surgical department')}, where they can be admitted for surgery, or transfer them.</div>`:here&&c.surg&&hasOR(L)?surgAdmitHTML(p):here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${isFlow(L)?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
   // exams here

@@ -5,7 +5,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 **Play:** https://annabxclu.github.io/Triage-Ward/ (once GitHub Pages is enabled)
 
 ## How a case flows
-1. A new patient arrives every 5 minutes, straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 hour), yellow, green.
+1. A new patient arrives every 8 minutes, straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 hour), yellow, green.
 2. In every ward, assign a **triage room** and a named **nurse** for the first tests (vitals, ECG, swabs, urine and glucose checks), then move them to the **waiting room** or a **diagnostic room** where you assign a **doctor** to examine, diagnose and treat.
 3. Run real tests to uncover hidden findings. A doctor can place **Doctor orders** for tests in other departments (e.g. *Complete blood count — Laboratory*, *CT head — Radiology*). Send the patient there, assign a named lab tech or rad tech, and they run the orders before you return the patient.
 4. Pick the diagnosis from 600 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
@@ -24,7 +24,7 @@ Click **Test mode** in the top bar to open test tools in the sidebar: add money,
 
 ## Surgery
 
-About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, craniotomy, fracture fixation and so on). Once a doctor confirms one, the chart shows **Admit for surgery** instead of Start treatment. Admitting moves the patient to a recovery bed in that department. When an **operating room** ($10,000, up to 4 per department; the ER starts with one), a **surgeon** ($2,500 to hire), an **anesthesiologist** ($2,000 to hire) and a nurse are all free, the team operates automatically, then the patient recovers in the bed and is discharged as usual. Red patients stay critical until surgery starts.
+About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, craniotomy, fracture fixation and so on). Once a doctor confirms one, the chart shows **Admit for surgery** instead of Start treatment. Admitting moves the patient to a recovery bed in that department. When an **operating room** ($10,000, up to 4 per department; the Emergency Room does not do surgery), a **surgeon** ($2,500 to hire), an **anesthesiologist** ($2,000 to hire) and a nurse are all free, the team operates automatically, then the patient recovers in the bed and is discharged as usual. Red patients stay critical until surgery starts.
 
 ## ICU and collapses
 Urgent patients left waiting can **collapse**: a red alert bar names the patient and where they are, the department gets a ⚠ badge, and they have 15 minutes. The **ICU** has no queue or rooms, just beds (10 to start, more for $5,000 each). A patient in an ICU bed is stable, so their clock stops (the only place it does) while ICU nurses and doctors work them up, and ICU-treated conditions recover in the same bed.
