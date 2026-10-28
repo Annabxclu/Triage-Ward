@@ -436,7 +436,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <li>A new patient arrives every 5 minutes and goes straight to the department for their condition.</li>
         <li>Red patients have 1 hour. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
-        <li>Everything runs on real time: a 20-minute CT takes 20 real minutes. Closing the page pauses your hospital.</li>
+        <li>Everything runs on real time: a 10-minute CT head takes 10 real minutes. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
     </form>
@@ -504,7 +504,8 @@ const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
 const MS_PER_MIN = 60000; // real time: one minute is one minute
 
 const EXAMS = {};
-function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min,cost,depts,norm}}
+const EXAM_SPEED=0.5; /* every test and exam runs in half its listed time */
+function X(id,name,min,cost,depts,norm){EXAMS[id]={id,name,min:Math.max(1,Math.round(min*EXAM_SPEED)),cost,depts,norm}}
 X('hx','Patient interview',3,50,'basic','Nothing further to report');
 X('phys','Physical exam',5,80,'basic','Unremarkable exam');
 X('vitals','Vital signs',2,30,'basic','Within normal limits');
