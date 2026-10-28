@@ -340,6 +340,41 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .top .hname{font-size:21px;width:100%}
   .meters{margin-left:0;gap:6px 16px}
 }
+@media (max-width:600px){
+  /* phone only: iPad and computer layouts are untouched */
+  .top{gap:8px;padding-block:8px;padding-top:max(8px,env(safe-area-inset-top,0px))}
+  .top .hname{font-size:18px;gap:8px}
+  .top .hname .cross{width:16px;height:16px}
+  .meters{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between;gap:8px 10px;width:100%}
+  .meter small{font-size:9.5px;letter-spacing:.08em}
+  .meter b{font-size:14px}
+  .meters .menu{grid-column:span 1;padding:6px 4px;font-size:13px;text-align:center;min-height:36px}
+  .meters #pauseBtn{grid-column:1 / span 2}
+  .meters #testBtn{grid-column:3}
+  .meters #newBtn{grid-column:4}
+  /* sidebar pieces: ward switcher sticks to the top, extras move below the ward */
+  .body,.body.has-chart{display:flex;flex-direction:column}
+  .side{display:contents}
+  .side>*{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .side>.dirwrap{order:0;position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px;box-shadow:0 4px 10px -8px rgba(0,0,0,.35)}
+  .side>.dirwrap h3{display:none}
+  .side>.dirwrap .nav.open-list{padding-bottom:2px;scrollbar-width:none}
+  .side>.dirwrap .nav.open-list::-webkit-scrollbar{display:none}
+  .side>.dirwrap .navi{padding:6px 10px;gap:6px;font-size:14px;min-height:38px}
+  .side>.dirwrap .navi .badge{display:none}
+  .side>.dirwrap .navi .nm{max-width:150px}
+  .side>.dirwrap .navi.on{box-shadow:inset 0 -3px 0 var(--accent)}
+  .main{order:1}
+  .side>.testbox{order:2;margin:16px}
+  .side>.lockgrp{order:3;margin-top:8px;border-top:1px solid var(--line);padding-top:12px}
+  .side>.totals{order:4;margin-top:12px}
+  .side>.help{order:5;margin:12px 0 24px}
+  .chart{z-index:40}
+  .dtitle h1{font-size:24px}
+  .dtitle p{font-size:13px}
+  .slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pt{min-width:0}
+}
 </style>
 
 </head>
@@ -1457,7 +1492,7 @@ function renderSide(){
       <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
       <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear all queues</button><button class="btn sm" data-act="tevent">Random event</button><button class="btn sm" data-act="tevtend">End event</button></div>
       <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
-  h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
+  h+=`<div class="dirwrap"><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
   on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
   h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
@@ -1465,7 +1500,7 @@ function renderSide(){
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
     <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
   h+=`</div></details>
-  <div><h3>Shift totals</h3><div class="stats">
+  <div class="totals"><h3>Shift totals</h3><div class="stats">
    <div>Treated <b>${S.st.treated}</b></div><div>Transferred <b>${S.st.xfer}</b></div>
    <div>Left <b>${S.st.left}</b></div><div>Died <b>${S.st.died}</b></div>
    <div>Misdiagnosed <b>${S.st.misdx}</b></div><div>Turned away <b>${S.st.away}</b></div></div></div>
@@ -1479,8 +1514,12 @@ function renderSide(){
    <li>Red patients left waiting can collapse. A red alert bar appears; rush them to an ICU bed, where their clock stops.</li>
    <li>Every confirmed diagnosis, misdiagnosis or autopsy adds the full case to your Casebook.</li>
   </ol></details>`;
-  document.getElementById('side').innerHTML=h;
+  const sd=document.getElementById('side'),ol=sd.querySelector('.dirwrap .open-list'),sl=ol?ol.scrollLeft:0;
+  sd.innerHTML=h;
+  const nl=sd.querySelector('.dirwrap .open-list');if(nl){nl.scrollLeft=sl;const on=nl.querySelector('.navi.on');if(on&&nl.scrollWidth>nl.clientWidth&&lastSideView!==S.view){nl.scrollLeft=on.offsetLeft-nl.offsetLeft-(nl.clientWidth-on.offsetWidth)/2}}
+  lastSideView=S.view;
 }
+let lastSideView=null;
 
 function card(p){
   const c=cond(p);let st='Waiting',cls='';
@@ -1807,7 +1846,7 @@ let confirmNew=0;
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b||!S||b.disabled)return;const a=b.dataset.act;const p=S.pid&&S.P[S.pid];
   switch(a){
-    case 'view':S.view=b.dataset.v;break;
+    case 'view':if(S.view!==b.dataset.v&&matchMedia('(max-width:600px)').matches){const m=document.getElementById('main');requestAnimationFrame(()=>{const y=m.getBoundingClientRect().top+scrollY-document.querySelector('.dirwrap').offsetHeight;if(scrollY>y)scrollTo(0,Math.max(0,y))})}S.view=b.dataset.v;break;
     case 'pt':S.pid=b.dataset.pid;break;
     case 'close':S.pid=null;break;
     case 'addbed':{const d=b.dataset.d,D=S.depts[d];if(S.money<BED_COST||D.beds>=BEDMAX)return;S.money-=BED_COST;D.beds++;toast(`Recovery bed added to ${DEPT[d].name}.`);break}
@@ -1856,7 +1895,7 @@ document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.v
 document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('medgrp')){if(e.target.open)medOpen.add(e.target.dataset.g);else medOpen.delete(e.target.dataset.g)}if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
 document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
-document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
+document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save();scrollTo(0,0)});
 
 /* ================= LOOP ================= */
 let saveAt=0;
