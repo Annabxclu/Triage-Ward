@@ -191,6 +191,15 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .pst.run{color:var(--accent)}.pst.rec{color:var(--muted)}.pst.idle{color:var(--amber)}
 .callout.surgcall{background:color-mix(in srgb,var(--accent) 10%,var(--panel));border-color:var(--accent)}
 .warnnote{color:var(--amber)}
+.stcard{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:10px 14px;display:grid;gap:4px;flex:none}
+.stcard.empty{border-style:dashed}
+.sthead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.stname{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-size:16px}
+.stname:hover b{color:var(--accent)}
+.strow{display:grid;grid-template-columns:170px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed var(--line)}
+.sthead+.strow{border-top:0}
+.strole{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
+.strole .rgn{font-size:12px;color:var(--muted);background:var(--panel2);border-radius:999px;padding:1px 7px;font-weight:400}
 .bookbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .bookbar input{flex:1;min-width:0;max-width:480px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -402,6 +411,8 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .side>.totals{order:4;margin-top:12px}
   .side>.help{order:5;margin:12px 0 24px}
   .chart{z-index:40}
+  .strow{grid-template-columns:minmax(0,1fr) auto}
+  .strow .people{grid-column:1 / -1;grid-row:2}
   .ptrow{grid-template-columns:minmax(0,1fr) auto;gap:6px 10px}
   .pthead{display:none}
   .ptrow .pc:nth-child(2){grid-column:1 / -1;flex-direction:row;align-items:baseline;gap:6px;flex-wrap:wrap}
@@ -1744,6 +1755,8 @@ function renderSide(){
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
   const ptAll=Object.values(S.P).filter(p=>p.loc!=='morgue'),ptIdle=ptAll.filter(p=>needsAction(p)).length;
   h+=item('pts','PTS','Patients',`<span class="${ptIdle?'idle':''}" title="${ptIdle} need${ptIdle===1?'s':''} you · ${ptAll.length} total">${ptIdle}/${ptAll.length}</span>`,200,0,0);opts+=`<option value="pts" ${S.view==='pts'?'selected':''}>Patients (${ptIdle}/${ptAll.length})</option>`;
+  {const stN=allStaff().length+DEPTS.filter(d=>S.depts[d.id].on&&!hasNamedClin(d.id)&&!NAMED_ROLE[d.id]).reduce((n,d)=>n+(S.depts[d.id].lead||0),0);
+   h+=item('staff','STAF','Staff',`<span title="${stN} on staff">${stN}</span>`,150,0,0);opts+=`<option value="staff" ${S.view==='staff'?'selected':''}>Staff (${stN})</option>`}
   on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;needAll+=idle;{const r=redIn(all),cl=colIn(all);opts+=`<option value="${d.id}" ${S.view===d.id?'selected':''}>${cl?'⚠ ':r?'❗':''}${esc(d.name)} (${idle}/${all.length})</option>`}h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
   h+=`</div><div class="wardpick"><label for="wardSel">Go to</label><select id="wardSel">${opts}${S.depts[S.view]&&!S.depts[S.view].on?`<option value="${S.view}" selected>${esc(DEPT[S.view].name)} (locked)</option>`:''}</select>${needAll?`<span class="wneed">${needAll} need${needAll===1?'s':''} you</span>`:''}</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
@@ -1910,9 +1923,32 @@ function patientsHTML(){
       <span class="pc mono" role="cell">${p.deadline?`<span data-dlt="${p.id}"></span>`:'<span class="psub">—</span>'}</span></button>`});
   return h+'</div>';
 }
+function staffGroups(v){const D=S.depts[v];
+  if(hasNamedClin(v)){const g=[['nurse','Nurses',NURSE_PAY,'nurse'],['doctor','Doctors',DOC_PAY,'lead']];if(hasOR(v))g.push(['surgeon','Surgeons',SURGEON_PAY,'surgeon'],['anes','Anesthesiologists',ANES_PAY,'anes']);return g}
+  if(NAMED_ROLE[v])return [[NAMED_ROLE[v],ROLE_TITLE[NAMED_ROLE[v]]+'s',leadRole(v)[1],'lead']];
+  return [[null,leadRole(v)[0],leadRole(v)[1],'lead']]}
+function staffHTML(){
+  const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>a.name.localeCompare(b.name));
+  const all=allStaff(),busy=all.filter(x=>staffBusyWith(x.id)).length,sick=all.filter(x=>isSick(x)).length;
+  const unnamed=on.filter(d=>!hasNamedClin(d.id)&&!NAMED_ROLE[d.id]).reduce((n,d)=>n+(S.depts[d.id].lead||0),0);
+  let h=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:150">STAF</span><div><h1>Staff</h1>
+    <p>Everyone on staff in every open department. Hire from here or open a department to manage it.</p></div></div>
+    <div class="ptsum mono"><span><b>${all.length+unnamed}</b> on staff</span><span><b>${all.length-busy-sick}</b> free</span><span><b>${busy}</b> with a patient</span>${sick?`<span><b>${sick}</b> out sick</span>`:''}</div></div>`;
+  on.forEach(d=>{const v=d.id,D=S.depts[v];let total=0;
+    const rows=staffGroups(v).map(([role,label,cost,r])=>{
+      let ppl,n;
+      if(role){const list=(D.staff||[]).filter(x=>x.role===role);n=list.length;
+        ppl=list.map(x=>{const w=staffBusyWith(x.id);return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">None hired</span>'}
+      else{n=D.lead||0;ppl=`<div class="staff"><button data-act="fire" data-d="${v}" data-r="lead" ${n?'':'disabled'} aria-label="Let one go">−</button><b>${n}</b></div>`}
+      total+=n;
+      return `<div class="strow"><span class="strole">${esc(label)} <span class="rgn mono">${n}</span></span><div class="people">${ppl}</div><button class="btn sm" data-act="hire" data-d="${v}" data-r="${r}" ${S.money<cost?'disabled':''}>Hire · ${fmt$(cost)}</button></div>`}).join('');
+    h+=`<section class="stcard ${total?'':'empty'}"><div class="sthead"><button class="stname" data-act="view" data-v="${v}"><span class="badge" style="--h:${d.hue}">${d.code}</span><b>${esc(d.name)}</b></button><span class="cap mono">${total} staff</span>${total?'':'<span class="warnnote empty-note">No staff yet</span>'}</div>${rows}</section>`});
+  return h;
+}
 function renderMain(){
   const m=document.getElementById('main');let h='';const v=S.view;
   if(v==='pts'){mainMode='pts';m.innerHTML=patientsHTML()+logHTML();return}
+  if(v==='staff'){mainMode='staff';m.innerHTML=staffHTML();return}
   if(v==='book'){
     if(mainMode!=='book'){m.innerHTML=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:280">BOOK</span><div><h1>Casebook</h1>
       <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. Starting a new game clears it.</p></div></div></div>
