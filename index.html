@@ -125,6 +125,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .tgl[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}.tgl[aria-checked="true"] span{left:22px}
 .acct{display:flex;align-items:center;gap:10px;margin:6px 0}.acct img{width:36px;height:36px;border-radius:50%}.acct div{display:flex;flex-direction:column}.acct span{font-size:12px;color:var(--muted)}
 .acctst{margin:4px 0 8px;font-size:13px;color:var(--muted)}
+.setup-acct{border-top:1px solid var(--line);padding-top:14px;margin-top:4px;display:grid;gap:4px}
 .swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sw{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px 4px 4px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer}
 .sw span{width:20px;height:20px;border-radius:50%;background:var(--c);border:1px solid rgba(0,0,0,.15)}
@@ -496,6 +497,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
         <li>Time runs as game time: 1 game minute is 15 real seconds, so a 10-minute CT head takes 2½ real minutes. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
+      <div class="setup-acct"><b>Already playing on another device?</b><div id="setupAcct"></div></div>
     </form>
   </div>
 </div>
@@ -1565,7 +1567,10 @@ function cloudSignIn(){cloudMsg='';
   const P=new fb.U.GoogleAuthProvider();P.setCustomParameters({prompt:'select_account'});
   fb.U.signInWithPopup(fb.auth,P).catch(e=>{if(e.code==='auth/popup-blocked'){try{localStorage.setItem('hospital-cloud','1')}catch(x){}fb.U.signInWithRedirect(fb.auth,P).catch(x=>{cloudMsg=signInMsg(x);cloudUI()})}else{cloudMsg=signInMsg(e);cloudUI()}})}
 async function cloudSignOut(){if(!fb)return;await cloudPush(true);await fb.U.signOut(fb.auth);try{localStorage.removeItem('hospital-cloud')}catch(e){}fbUser=null;cloudUI();toast('Signed out. This device keeps its own copy.')}
-function cloudUI(){const el=document.getElementById('acctBox');if(!el)return;
+function cloudUI(){const su=document.getElementById('setupAcct');
+  if(su)su.innerHTML=fbUser?`<p class="acctst">Signed in as <b>${esc(fbUser.email||fbUser.displayName||'')}</b>. ${cloudBusy?'Looking for your hospital…':'No saved hospital on this account yet. Name one above to start; it will save to your account.'}</p>${cloudMsg?`<p class="acctst warnnote">${esc(cloudMsg)}</p>`:''}`
+    :`<p class="acctst">Sign in to load your saved hospital.</p>${cloudMsg?`<p class="acctst warnnote">${esc(cloudMsg)}</p>`:''}<button class="btn" type="button" id="setupSignIn">Sign in with Google</button>`;
+  const el=document.getElementById('acctBox');if(!el)return;
   if(fbUser){el.innerHTML=`<div class="acct">${fbUser.photoURL?`<img src="${esc(fbUser.photoURL)}" alt="" referrerpolicy="no-referrer">`:''}<div><b>${esc(fbUser.displayName||'Signed in')}</b><span>${esc(fbUser.email||'')}</span></div></div>
     <p class="acctst">${cloudBusy?'Syncing…':lastPush?`Saved to your account at ${new Date(lastPush).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}.`:'Your game saves to your account automatically.'}</p>${cloudMsg?`<p class="acctst warnnote">${esc(cloudMsg)}</p>`:''}
     <div class="line wrap"><button class="btn sm" data-act="cloudsync">Save now</button><button class="btn sm" data-act="cloudout">Sign out</button></div>`}
@@ -2368,7 +2373,7 @@ function renderAlerts(){const el=document.getElementById('alerts');const ps=Obje
   el.innerHTML=(ev?`<div class="alert evt"><span class="edot">📣</span><span><b>${esc(ev.name)}</b> · ${esc(ev.desc)}${ev.rate?` <span class="mono">(${ev.rate>0?'+':''}${Math.round(ev.rate*100)}% patients)</span>`:''}</span><span class="mono evleft" data-evt="1"></span></div>`:'')+ps.map(p=>{const where=p.loc==='rec'?'Reception':`${DEPT[p.loc].name}${p.stage?' · '+(stageName(p)||''):''}`;
     return `<div class="alert"><span class="adot"></span><span><b>${esc(pname(p))}</b> collapsed in ${esc(where)} · <span class="mono" data-dlt="${p.id}"></span> left</span><button class="btn sm" data-act="goto" data-pid="${p.id}">Open</button></div>`}).join('')}
 function render(){
-  if(!S){document.getElementById('app').hidden=true;document.getElementById('setup').hidden=false;return}
+  if(!S){document.getElementById('app').hidden=true;document.getElementById('setup').hidden=false;cloudUI();return}
   document.getElementById('setup').hidden=true;document.getElementById('app').hidden=false;
   renderTop();renderAlerts();renderSide();renderMain();renderChart();tickUI();dirty=false;
 }
@@ -2377,6 +2382,7 @@ function render(){
 let confirmNew=0;
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#chart .med')){const n=document.querySelectorAll('#chart .med input:checked').length;const el=document.getElementById('rxSel');if(el)el.textContent=`${n} selected`}});
 document.addEventListener('input',e=>{if(e.target.id==='bandPick'){bandColor=e.target.value;try{localStorage.setItem('hospital-band',bandColor)}catch(err){}applyBand();document.querySelectorAll('.sw.on').forEach(x=>x.classList.remove('on'))}});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#setupSignIn')){e.preventDefault();cloudSignIn()}});
 document.addEventListener('click',e=>{const dl=document.getElementById('settingsDlg');if(e.target===dl){dl.close();return}});
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b||!S||b.disabled)return;const a=b.dataset.act;const p=S.pid&&S.P[S.pid];
@@ -2463,7 +2469,7 @@ function start(data){
       mv.forEach(id=>{const p=S.P[id];if(!p)return;I.dxr.push(id);p.stage='icu';p.nurse=null;p.doc=p.doc||null;p.inW=false});(I.dxr||[]).forEach(id=>{if(S.P[id])S.P[id].stage='icu'})}}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
   if(S){if(S.view==='rec')S.view='er';(S.rec||[]).slice().forEach(id=>{const p=S.P[id];S.rec=S.rec.filter(x=>x!==id);if(!p)return;const d=routeDept(cond(p),p);if(d){p.loc='x';addTo(p,d)}else delete S.P[id]})}
-  render();soundUI();setInterval(loop,200);
+  render();soundUI();cloudUI();setInterval(loop,200);
 }
 window.claude?.hot?.snapshot?.(()=>({state:S}));
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
