@@ -208,6 +208,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .alert.evt b{color:var(--amber)}
 .alert .evleft{margin-left:auto;color:var(--amber);font-weight:600;white-space:nowrap}
 .person.sick{opacity:.55}
+.vipb{flex:none;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--band);background:var(--amber);border-radius:3px;padding:1px 5px}
 .person.sick .pdot{background:var(--muted)}
 .alert .btn{margin-left:auto}
 .adot{width:9px;height:9px;border-radius:50%;background:var(--red);flex:none;animation:pulse 1s ease-in-out infinite}
@@ -1044,6 +1045,7 @@ const fmt$=n=>(n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('en-US');
 function clockStr(t){const m=480+Math.floor(t);const d=Math.floor(m/1440)+1;const h=Math.floor(m%1440/60),mm=m%60;return `Day ${d} · ${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
 function fmtDur(min){min=Math.max(0,Math.round(min));const h=Math.floor(min/60),m=min%60;
   const hs=h?`${h} hour${h>1?'s':''}`:'',ms=`${m} minute${m!==1?'s':''}`;return h?(m?`${hs} and ${ms}`:hs):ms}
+function fmtCountdown(min){min=Math.max(0,min);if(min>=60)return fmtDur(Math.ceil(min));const sec=Math.ceil(min*60);return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`}
 function realTime(ms){return new Date(ms).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}
 function hhmm(t){const m=480+Math.floor(t);const h=Math.floor(m%1440/60),mm=m%60;return `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
 
@@ -1077,29 +1079,30 @@ const EVENTS=[
  {id:'festival',name:'Music festival',desc:'A crowded weekend festival nearby.',dur:120,rate:.3,conds:['Opioid overdose','Panic attack','Simple laceration','Ankle sprain','Gastroenteritis','Concussion','Chlamydia']},
  {id:'chem',name:'Chemical plant leak',desc:'A gas release at an industrial site.',dur:60,rate:.3,conds:['Chlorine gas poisoning','Carbon monoxide poisoning','Partial-thickness burns','Asthma exacerbation']},
  {id:'quiet',name:'Quiet holiday',desc:'The city is celebrating. Fewer patients for a while.',dur:120,rate:-.4},
- {id:'sick',name:'Staff illness',desc:'Some of your staff called in sick.',dur:120,kind:'sick'},
- {id:'power',name:'Power outage',desc:'Radiology scanners are offline until power is restored.',dur:45,kind:'power'},
- {id:'donor',name:'Charity donation',desc:'A grateful family donated $15,000 to the hospital.',dur:10,kind:'donor'}];
+ {id:'diversion',name:'Ambulance diversion',desc:'A nearby hospital closed its doors. Their patients are coming to you.',dur:120,rate:.6},
+ {id:'vip',name:'VIP patient',desc:'A celebrity has arrived. They pay triple, but they won\'t wait long.',dur:120,kind:'vip'},
+ {id:'students',name:'Medical students visiting',desc:'Eager students are helping out. Doctors work 25% faster this shift.',dur:480,kind:'students'}];
 EVENTS.forEach(e=>{if(e.conds)e.set=new Set(e.conds)});
 const evtNow=()=>S&&S.evt&&S.t<S.evt.end?EVENTS.find(e=>e.id===S.evt.id):null;
 const evtActive=id=>{const e=evtNow();return !!e&&e.id===id};
 const isSick=x=>!!(x&&x.sick&&S&&x.sick>S.t);
 function evtEligible(e){
   if(e.conds){const open=CONDS.filter(c=>e.set.has(c.n)&&c.t.some(t=>S.depts[t]&&S.depts[t].on));return open.length>=2}
-  if(e.kind==='power')return !!(S.depts.rad&&S.depts.rad.on);
-  if(e.kind==='sick')return allStaff().filter(x=>x.role==='nurse'||x.role==='doctor').length>=3;
+  if(e.kind==='students')return allStaff().some(x=>x.role==='doctor');
   return true}
 function startEvent(e){
   S.evt={id:e.id,start:S.t,end:S.t+e.dur};
-  if(e.kind==='donor'){S.money+=15000;S.st.revenue+=15000}
   let extra='';
-  if(e.kind==='sick'){const pool=allStaff().filter(x=>(x.role==='nurse'||x.role==='doctor')&&!staffBusyWith(x.id)&&!isSick(x));
-    const out=pool.sort(()=>Math.random()-.5).slice(0,2);out.forEach(x=>{x.sick=S.t+e.dur});extra=out.length?` Out sick: ${out.map(staffName).join(', ')}.`:''}
+  if(e.kind==='vip'){const before=S.seq;arrive();const p=S.P['p'+before];
+    if(p){p.vip=true;p.cov=+(p.cov*3).toFixed(2);p.ins=`VIP · ${p.ins}`;if(p.deadline){const left=(p.deadline-S.t)/2;p.deadline=S.t+left;p.span=Math.max(1,p.span/2)}p.v++;extra=` ${pname(p)} is in ${DEPT[p.loc].name}.`}}
   log(`Event: ${e.name}. ${e.desc}${extra}`,'warn');toast(`📣 ${e.name}: ${e.desc}`,'warn');dirty=true}
+/* one event per calendar day, at a random point 20 minutes to 2 hours into that day's play */
 function evtTick(){
-  if(S.evt&&S.t>=S.evt.end){const e=EVENTS.find(x=>x.id===S.evt.id);S.evt=null;S.evtNext=S.t+rnd(90,240);if(e&&e.kind!=='donor'){log(`${e.name} is over.`,'good');toast(`${e.name} is over.`,'good')}dirty=true}
-  if(S.evtNext==null)S.evtNext=S.t+rnd(60,150);
-  if(!S.evt&&S.t>=S.evtNext){const ok=EVENTS.filter(evtEligible);if(ok.length)startEvent(pick(ok));else S.evtNext=S.t+60}}
+  if(S.evt&&S.t>=S.evt.end){const e=EVENTS.find(x=>x.id===S.evt.id);S.evt=null;if(e){log(`${e.name} is over.`,'good');toast(`${e.name} is over.`,'good')}dirty=true}
+  const today=new Date().toDateString();
+  if(S.evt||S.evtDay===today)return;
+  if(S.evtPlanDay!==today){S.evtPlanDay=today;S.evtNext=S.t+rnd(20,120)}
+  if(S.t>=S.evtNext){const ok=EVENTS.filter(evtEligible);if(ok.length){startEvent(pick(ok));S.evtDay=today}else S.evtNext=S.t+60}}
 function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='clinic';
   const order=[c.d,...c.t,'er'].filter((d,i,a)=>a.indexOf(d)===i&&ok(d));for(const d of order)if(space(d,p||{triaged:false}))return d;return null}
 function arrive(force){
@@ -1184,7 +1187,7 @@ function gone(p){removeFrom(p);delete S.P[p.id];if(S.pid===p.id)S.pid=null;dirty
 function busyCount(d){let n=0;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.d===d)n++}return n}
 function bedsUsed(d){const D=S.depts[d];let n=(D.adm||[]).length;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.k==='treat'&&p.busy.d===d&&cond(p).los)n++}return n}
 function canWork(d){const D=S.depts[d];return D&&D.on&&D.lead>0&&busyCount(d)<D.lead}
-function dur(min,d){const D=S.depts[d];const cut=0;return Math.max(1,Math.round(min*(1-cut)))}
+function dur(min,d){const D=S.depts[d];const cut=evtActive('students')&&DEPT[d]&&DEPT[d].kind==='clinic'?.25:0;return Math.max(1,Math.round(min*(1-cut)))}
 function examHere(x,d){const e=EXAMS[x];if(!d||!DEPT[d])return false;return e.depts==='basic'?DEPT[d].kind==='clinic':e.depts.includes(d)}
 
 /* ---------- actions ---------- */
@@ -1381,7 +1384,7 @@ function card(p){
   if(NAMED_ROLE[p.loc]&&!p.busy&&!p.inW)st=p.tech?`With ${esc(staffName(staffById(p.tech)))}`:`Needs a ${ROLE_TITLE[NAMED_ROLE[p.loc]].toLowerCase()}`;
   const showBar=p.busy||p.deadline||(p.adm&&!p.adm.ready);
   return `<button class="pt ${S.pid===p.id?'sel':''} ${p.collapsed?'collapsed':''}" data-act="pt" data-pid="${p.id}">${p.collapsed?'<span class="colbadge">⚠ Collapsed</span>':''}
-   <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span></span>
+   <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span>${p.vip?'<span class="vipb">★ VIP</span>':''}</span>
    <span class="meta">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span>
    <span class="status ${cls}">${st}</span>${ordLine}
    ${showBar?`<span class="bar ${p.busy||p.adm?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
@@ -1596,7 +1599,7 @@ function chartHTML(p){
      ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a seat in the queue opens.</div>':''}
      <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
       const qi=(p.tq||[]).indexOf(x);const run=!!(p.busy&&p.busy.k==='exam'&&p.busy.x===x);
-      return `<button class="exam ${dn?'done':''} ${qi>=0?'queued':''} ${run?'running':''}" data-act="exam" data-x="${x}" ${dn||run||(qi<0&&nq>=TQMAX)?'disabled':''} ${qi>=0?'aria-pressed="true"':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${run?'Running now':qi>=0?`Queued #${qi+1} · tap to remove`:`${fmtDur(dur(e.min,L))} · ${fmt$(e.cost)}`}</span></button>`}).join('')}</div></div>`;
+      return `<button class="exam ${dn?'done':''} ${qi>=0?'queued':''} ${run?'running':''}" data-act="exam" data-x="${x}" ${dn||run||(qi<0&&nq>=TQMAX)?'disabled':''} ${qi>=0?'aria-pressed="true"':''}><span class="en">${dn?'✓ ':''}${esc(e.name)}</span><span class="ec">${run?`Running · <span data-bzt="${p.id}"></span>`:qi>=0?`Queued #${qi+1} · tap to remove`:`${fmtDur(dur(e.min,L))} · ${fmt$(e.cost)}`}</span></button>`}).join('')}</div></div>`;
   }
 
   // doctor orders: tests from other departments
@@ -1665,7 +1668,7 @@ function tickUI(){
     const ps=isICU(p.loc);el.textContent=el.classList.contains('tag')?`${ps?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10&&!ps);el.classList.toggle('paused',ps)});
   document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=`${isICU(p.loc)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
   document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${fmtDur(Math.ceil(p.adm.until-S.t))} left`});
-  document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${fmtDur(Math.ceil(p.busy.end-S.t))} left`});
+  document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${fmtCountdown(p.busy.end-S.t)} left`});
 }
 function renderAlerts(){const el=document.getElementById('alerts');const ps=Object.values(S.P).filter(p=>p.collapsed);const ev=evtNow();
   if(!ps.length&&!ev){el.hidden=true;el.innerHTML='';return}el.hidden=false;
@@ -1693,7 +1696,7 @@ document.addEventListener('click',e=>{
     case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(hasNamedClin(d.id)){while(D.staff.filter(x=>x.role==='nurse').length<2)hireNamed('nurse',d.id);while(D.staff.filter(x=>x.role==='doctor').length<2)hireNamed('doctor',d.id);return}if(NAMED_ROLE[d.id]){while((D.staff||[]).length<2)hireNamed(NAMED_ROLE[d.id],d.id);return}if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
     case 'tskip':step(+b.dataset.n);toast(`Skipped ${b.dataset.n} minutes.`);break;
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
-    case 'tevent':{const ok=EVENTS.filter(evtEligible);if(!ok.length){toast('No event fits your open departments yet.');return}startEvent(pick(ok));break}
+    case 'tevent':{if(S.evt){S.evt.end=S.t;evtTick()}const ok=EVENTS.filter(evtEligible);if(!ok.length){toast('No event fits your open departments yet.');return}startEvent(pick(ok));break}
     case 'tevtend':{if(S.evt)S.evt.end=S.t;evtTick();break}
     case 'tclear':DEPTS.forEach(d=>{const D=S.depts[d.id];[...(D.q||[])].forEach(id=>S.P[id]&&gone(S.P[id]))});toast('All queues cleared.');break;
     case 'tspawn':{const v=document.getElementById('testCond').value;const before=S.seq;arrive(v===''?null:+v);const np=S.P['p'+before];if(np){S.view=np.loc;S.pid=np.id;toast(`${np.first} arrived in ${DEPT[np.loc].name}.`)}else toast('No open department has room for that patient.');break}
