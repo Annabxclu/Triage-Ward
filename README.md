@@ -8,7 +8,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 1. A new patient arrives every 5 minutes, straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 hour), yellow, green.
 2. In every ward, assign a **triage room** and a named **nurse** for the first tests (vitals, ECG, swabs, urine and glucose checks), then move them to the **waiting room** or a **diagnostic room** where you assign a **doctor** to examine, diagnose and treat.
 3. Run real tests to uncover hidden findings. A doctor can place **Doctor orders** for tests in other departments (e.g. *Complete blood count — Laboratory*, *CT head — Radiology*). Send the patient there, assign a named lab tech or rad tech, and they run the orders before you return the patient.
-4. Pick the diagnosis from 465 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
+4. Pick the diagnosis from 524 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
 5. Treat in a department that handles the condition, or transfer to another hospital. Bigger cases (surgery, heart attacks, strokes, sepsis, labor…) then recover in that department's recovery beds; discharge them when the stay ends to collect room charges.
 6. With a Pharmacy open, choose the right OTC and prescription meds.
 
