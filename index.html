@@ -1125,8 +1125,9 @@ function assignStaff(p,sid){const x=staffById(sid);if(!x||staffBusyWith(sid))ret
   p.v++;dirty=true;tryNext(p)}
 
 /* ---------- placement ---------- */
-function space(d,p){const D=S.depts[d];if(isICU(d))return (D.dxr||[]).length+(D.adm||[]).length<D.beds;if(isFlow(d))return p&&p.triaged?D.w.length<WMAX:D.q.length<QMAX;return D.q.length<QMAX||D.w.length<WMAX}
+function space(d,p){const D=S.depts[d];if(d==='pharm')return D.q.length<QMAX;if(isICU(d))return (D.dxr||[]).length+(D.adm||[]).length<D.beds;if(isFlow(d))return p&&p.triaged?D.w.length<WMAX:D.q.length<QMAX;return D.q.length<QMAX||D.w.length<WMAX}
 function addTo(p,d){const D=S.depts[d];
+  if(d==='pharm'){if(D.q.length>=QMAX)return false;D.q.push(p.id);p.inW=false;p.loc=d;p.v++;return true}
   if(isICU(d)){if((D.dxr||[]).length+(D.adm||[]).length>=D.beds)return false;D.dxr.push(p.id);p.stage='icu';p.inW=false;p.loc=d;p.triaged=true;if(p.collapsed){p.collapsed=false;log(`${pname(p)} is stable in an ICU bed.`,'good')}p.v++;return true}
   if(isFlow(d)){p.inW=false;if(p.triaged){if(D.w.length>=WMAX)return false;D.w.push(p.id);p.stage='wait'}else{if(D.q.length>=QMAX)return false;D.q.push(p.id);p.stage='queue'}p.loc=d;p.v++;return true}if(D.q.length<QMAX){D.q.push(p.id);p.inW=false}else if(D.w.length<WMAX){D.w.push(p.id);p.inW=true}else return false;p.loc=d;p.v++;return true}
 function removeFrom(p){
@@ -1455,7 +1456,7 @@ function renderMain(){
         h+=`<section class="zone"><div class="zone-h"><h2>Morgue</h2><span class="cap">${S.morgue.length}/${QMAX}</span><span class="note">Urgent patients who run out of time end up here.</span></div>${slots(S.morgue,QMAX,'Drawer')}</section>`;
       } else {
         h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Seat')}</section>
-        <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a seat in the queue opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`;
+        ${d.kind==='pharm'?'':`<section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a seat in the queue opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`}`;
         if(d.kind==='clinic')h+=recoveryZone(v);
       }
     }
@@ -1701,6 +1702,7 @@ function loop(){
 function start(data){
   S=(data&&data.state)||load();
   if(S)S.speed=S.speed?1:0;
+  if(S&&S.depts.pharm&&(S.depts.pharm.w||[]).length){const P=S.depts.pharm;P.w.forEach(id=>{if(S.P[id]){S.P[id].inW=false;P.q.push(id)}});P.w=[]}
   if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();
     const I=S.depts.icu;if(!I.icuV){I.icuV=1;I.beds=Math.max(I.beds||0,ICU_START);I.dxr=I.dxr||[];const mv=[...(I.q||[]),...(I.w||[]),...(I.tri||[])];I.q=[];I.w=[];I.tri=[];
       mv.forEach(id=>{const p=S.P[id];if(!p)return;I.dxr.push(id);p.stage='icu';p.nurse=null;p.doc=p.doc||null;p.inW=false});(I.dxr||[]).forEach(id=>{if(S.P[id])S.P[id].stage='icu'})}}
