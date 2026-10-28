@@ -8,7 +8,7 @@ A browser hospital-management game. Name your hospital, open with a free Emergen
 1. A new patient arrives every 5 minutes, straight into the open ward for their condition (or another ward that treats it, or the ER). Name color is triage: red (1 hour), yellow, green.
 2. In every ward, assign a **triage room** and a named **nurse** for the first tests (vitals, ECG, swabs, urine and glucose checks), then move them to the **waiting room** or a **diagnostic room** where you assign a **doctor** to examine, diagnose and treat.
 3. Run real tests to uncover hidden findings. A doctor can place **Doctor orders** for tests in other departments (e.g. *Complete blood count — Laboratory*, *CT head — Radiology*). Send the patient there, assign a named lab tech or rad tech, and they run the orders before you return the patient.
-4. Pick the diagnosis from 403 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
+4. Pick the diagnosis from 415 real conditions. The chart shows a likelihood percentage for the top candidates, updated as each finding comes in. A wrong guess sends the patient home without paying.
 5. Treat in a department that handles the condition, or transfer to another hospital. Bigger cases (surgery, heart attacks, strokes, sepsis, labor…) then recover in that department's recovery beds; discharge them when the stay ends to collect room charges.
 6. With a Pharmacy open, choose the right OTC and prescription meds.
 
@@ -30,3 +30,6 @@ The game saves itself to your browser every few seconds. Switching tabs, minimiz
 
 ## Random events
 One event happens each day you play, at a random moment 20 minutes to 2 hours into that day's session: a **bus fire**, **highway pile-up**, **ice storm**, **heat wave**, **flu season surge**, **food poisoning outbreak**, **pollen storm**, **music festival** or **chemical plant leak** sends extra patients with matching conditions; **ambulance diversion** brings 60% more of everyone; a **VIP patient** pays triple but waits only half as long; **medical students** make doctors 25% faster for a shift; or a **quiet holiday** slows arrivals. An amber banner shows what's happening and how long it lasts.
+
+## Outpatient Clinic
+Unlock the **Outpatient Clinic** ($8,000) for scheduled appointments: a random 1–4 booked patients per hour arrive on time, on top of the every-5-minutes walk-ins. Nurses do intake (interview, blood pressure, pulse oximetry, weight/BMI, immunization review); doctors do the annual physical, ear exam and skin check and can order labs. Visits include annual physicals, blood pressure and diabetes follow-ups, cholesterol, earwax, mole checks, warts, vitamin D, weight management, well-child visits and flu shots.

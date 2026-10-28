@@ -208,6 +208,9 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .alert.evt b{color:var(--amber)}
 .alert .evleft{margin-left:auto;color:var(--amber);font-weight:600;white-space:nowrap}
 .person.sick{opacity:.55}
+.apptb{flex:none;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--accent-ink);background:var(--accent);border-radius:3px;padding:1px 5px}
+.appts{display:flex;flex-wrap:wrap;gap:6px}
+.apptchip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 10px;font-size:13px}
 .vipb{flex:none;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--band);background:var(--amber);border-radius:3px;padding:1px 5px}
 .person.sick .pdot{background:var(--muted)}
 .alert .btn{margin-left:auto}
@@ -411,6 +414,7 @@ const DEPTS = [
  ['ent','ENT','ENT',9000,'clinic'],
  ['omfs','Oral & Maxillofacial','OMFS',9000,'clinic'],
  ['derm','Dermatology','DERM',10000,'clinic'],
+ ['clinic','Outpatient Clinic','CLIN',8000,'clinic'],
  ['path','Pathology','PATH',6000,'path'],
 ].map((d,i)=>({id:d[0],name:d[1],code:d[2],cost:d[3],kind:d[4],hue:Math.round((i*137.5+195)%360)}));
 const DEPT = Object.fromEntries(DEPTS.map(d=>[d.id,d]));
@@ -442,7 +446,7 @@ X('phq','Screening questionnaires (PHQ-9, GAD-7…)',6,60,['psych','im','er'],'S
 X('fast','FAST ultrasound',8,350,['er','trauma','icu','gs'],'No free fluid');
 X('wound','Wound assessment',5,90,['er','trauma','plastic'],'No wound');
 X('burn','Burn assessment (TBSA)',8,200,['trauma','plastic'],'No burns');
-X('oto','Otoscopy',3,50,['er','ent'],'Normal ear canal and eardrum');
+X('oto','Otoscopy',3,50,['er','ent','clinic'],'Normal ear canal and eardrum');
 X('echo','Echocardiogram',25,900,['cardio'],'Normal heart function, EF 60%');
 X('stress','Exercise stress test',35,700,['cardio'],'No ischemia at peak exercise');
 X('rom','Range-of-motion & special tests',8,150,['ortho'],'Full, painless range of motion');
@@ -469,7 +473,7 @@ X('lipase','Lipase',20,70,['lab'],'Normal');
 X('lft','Liver panel',20,70,['lab'],'Normal liver enzymes');
 X('lactate','Lactate',10,60,['lab','icu'],'Normal');
 X('abg','Arterial blood gas',10,120,['lab','icu'],'Normal pH and gases');
-X('a1c','HbA1c',25,60,['lab'],'5.4% (normal)');
+X('a1c','HbA1c',25,60,['lab','clinic'],'5.4% (normal)');
 X('tsh','Thyroid panel',25,90,['lab'],'Normal');
 X('tox','Toxicology screen',20,120,['lab'],'Negative');
 X('mono','Monospot test',15,50,['lab'],'Negative');
@@ -527,6 +531,11 @@ X('vagswab','Vaginal swab (pH, wet mount)',10,60,['sh','ob'],'Normal pH and flor
 X('hivtest','HIV antigen/antibody and viral load',30,180,['lab','sh'],'HIV negative');
 X('semen','Semen analysis',40,200,['sh'],'Normal semen analysis');
 X('usscrot','Scrotal ultrasound',15,400,['rad','sh'],'Normal testicles and epididymis');
+X('weight','Weight and BMI check',2,20,['clinic','im','psych'],'Healthy weight, BMI 23');
+X('immun','Immunization record review',4,30,['clinic','id'],'Vaccines up to date');
+X('annual','Annual physical exam',15,250,['clinic'],'Normal head-to-toe exam');
+X('skincheck','Full skin check',8,150,['clinic','derm'],'No concerning skin lesions');
+X('lipid','Lipid panel',25,60,['lab','clinic'],'Normal cholesterol');
 X('psurg','Plastic surgery consultation',20,250,['plastic'],'Not a good candidate for surgery');
 X('covertest','Cover test (eye alignment)',5,80,['plastic','neuro'],'Eyes aligned normally');
 X('sleepstudy','Sleep study (polysomnography)',60,1500,['psych','neuro'],'Normal sleep study');
@@ -589,7 +598,7 @@ M('dicyclo','Dicyclomine','Rx',15); M('sofos','Sofosbuvir-velpatasvir','Rx',2400
 M('sevel','Sevelamer','Rx',350); M('pentosan','Pentosan polysulfate','Rx',450); M('levothy','Levothyroxine','Rx',12); M('mtx','Methotrexate','Rx',25);
 M('sildened','Sildenafil 50 mg','Rx',30); M('art','HIV antiretroviral therapy (single tablet)','Rx',3500); M('imiq','Imiquimod cream','Rx',120); M('moxi','Moxifloxacin','Rx',40); M('prep','Emtricitabine-tenofovir (PrEP)','Rx',60); M('permlice','Permethrin 1% lice rinse','OTC',15);
 M('silgel','Silicone scar gel','OTC',25); M('compress','Compression stockings','OTC',35); M('minox','Minoxidil foam','OTC',30); M('sunscreen','SPF 50 sunscreen','OTC',12); M('triaminj','Triamcinolone injection','Rx',40);
-M('chlordiaz','Chlordiazepoxide','Rx',20); M('thiamine','Thiamine (vitamin B1)','OTC',8); M('donep','Donepezil','Rx',25); M('methylph','Methylphenidate','Rx',60); M('escit','Escitalopram','Rx',15); M('fluox','Fluoxetine','Rx',12); M('prazosin','Prazosin','Rx',15); M('pramip','Pramipexole','Rx',30); M('modaf','Modafinil','Rx',90); M('guanf','Guanfacine','Rx',40); M('nrt','Nicotine patches','OTC',40); M('varen','Varenicline','Rx',120); M('olanz','Olanzapine','Rx',35);
+M('chlordiaz','Chlordiazepoxide','Rx',20); M('thiamine','Thiamine (vitamin B1)','OTC',8); M('donep','Donepezil','Rx',25); M('methylph','Methylphenidate','Rx',60); M('escit','Escitalopram','Rx',15); M('fluox','Fluoxetine','Rx',12); M('prazosin','Prazosin','Rx',15); M('pramip','Pramipexole','Rx',30); M('modaf','Modafinil','Rx',90); M('guanf','Guanfacine','Rx',40); M('nrt','Nicotine patches','OTC',40); M('varen','Varenicline','Rx',120); M('olanz','Olanzapine','Rx',35); M('earwax','Earwax softening drops','OTC',8); M('salicyl','Salicylic acid wart treatment','OTC',10);
  M('clobet','Clobetasol ointment','Rx',45); M('permeth','Permethrin 5% cream','Rx',35);
 
 const CONDS = [];
@@ -1012,7 +1021,20 @@ C("Somatic symptom disorder","psych",["psych","im"],"g",[25,60],"f",["*hx:Many a
 C("Specific phobia","psych",["psych"],"g",[8,50],0,["*hx:Panics at the sight of needles, fainted at a blood draw","psyeval:Intense fear limited to needles"],["Exposure therapy plan",15,200],[]);
 C("Tourette syndrome","psych",["psych","neuro"],"g",[6,16],"m",["*hx:Blinking, shoulder jerks and grunting for over a year","neuro:Motor and vocal tics, exam otherwise normal"],["Behavioral therapy plan",20,400],["guanf"]);
 C("Tobacco withdrawal","psych",["psych","im"],"g",[20,65],0,["*hx:Quit smoking 2 days ago, irritable and anxious","*hx:Strong cravings, can't concentrate","vitals:Heart rate 62"],["Quit-smoking support plan",15,200],["nrt","varen"]);
-CONDS.forEach((c,i)=>{c.rare=i>=CORE_N&&i<ID_END;c.cos=/\(cosmetic\)$/.test(c.n)});
+/* Outpatient clinic: scheduled appointments only */
+C("Annual physical (healthy)","clinic",["clinic"],"g",[18,70],0,["*hx:Here for a yearly check-up, feels well","weight:BMI 24, weight stable","annual:Normal head-to-toe exam"],["Health counseling and screening plan",15,250],[]);
+C("Blood pressure follow-up","clinic",["clinic","im"],"g",[40,80],0,["*hx:Here for a blood pressure check, takes lisinopril","vitals:BP 152/94 (above goal)","weight:BMI 29","annual:Heart and lungs normal, no ankle swelling"],["Medication adjustment",15,250],["lisin","amlo"]);
+C("Diabetes follow-up visit","clinic",["clinic","im"],"g",[40,80],0,["*hx:Diabetes check-up, sometimes forgets metformin","weight:BMI 33, up 2 kg since last visit","a1c:HbA1c 8.2%","annual:Reduced feeling in both feet"],["Diabetes plan update and foot care advice",20,300],["metf"]);
+C("High cholesterol","clinic",["clinic","im","cardio"],"g",[30,70],0,["*hx:Routine visit, father had a heart attack at 52","annual:Yellowish deposits around the eyelids","lipid:LDL 212 mg/dL"],["Statin start and diet advice",15,250],["atorva"]);
+C("Earwax impaction","clinic",["clinic","ent"],"g",[8,85],0,["*hx:Muffled hearing in the right ear","oto:Ear canal blocked with hard wax"],["Ear irrigation",15,150],["earwax"]);
+C("Benign mole check","clinic",["clinic","derm"],"g",[18,70],0,["*hx:Wants a mole on the back checked","skincheck:Symmetric, evenly brown 4 mm mole, no warning signs"],["Reassurance and skin self-check advice",10,150],[]);
+C("Seborrheic keratosis","clinic",["clinic","derm"],"g",[45,85],0,["*hx:Crusty brown spots appearing on the chest","skincheck:Waxy, 'stuck-on' brown plaques"],["Cryotherapy",10,200],[]);
+C("Common wart","clinic",["clinic","derm"],"g",[5,40],0,["*hx:Rough bump on the finger for months","skincheck:Rough bump with tiny black dots"],["Cryotherapy",10,150],["salicyl"]);
+C("Vitamin D deficiency","clinic",["clinic","im"],"g",[25,70],0,["*hx:Tired with achy bones, works indoors all day","annual:Mild tenderness when pressing the shins","vitd:Vitamin D 12 ng/mL (low)"],["Supplement plan",10,150],["vitd3"]);
+C("Weight management visit","clinic",["clinic","im"],"g",[25,65],0,["*hx:Wants help with weight and energy","weight:BMI 38","vitals:BP 138/86","a1c:HbA1c 6.1% (prediabetes range)"],["Lifestyle and nutrition plan",20,300],[]);
+C("Well-child visit","clinic",["clinic"],"g",[1,6],0,["*hx:Parents bring their child for a routine check-up","weight:Growing steadily along the 50th percentile","annual:Normal development and exam","immun:Due for scheduled vaccines"],["Vaccines and growth check",20,300],[]);
+C("Flu shot visit","clinic",["clinic"],"g",[18,85],0,["*hx:Wants this season's flu vaccine","immun:No flu vaccine yet this season"],["Flu vaccination",5,60],[]);
+CONDS.forEach((c,i)=>{c.appt=c.d==='clinic';c.rare=i>=CORE_N&&i<ID_END;c.cos=/\(cosmetic\)$/.test(c.n)});
 const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart attack)":3,"Atrial fibrillation with RVR":1,"Heart failure exacerbation":3,
  "Tibial shaft fracture":2,"Hip fracture":3,"Community-acquired pneumonia":2,"Diabetic ketoacidosis":2,"Upper GI bleed":2,"Bacterial meningitis":4,"Urosepsis":3,
  "Partial-thickness burns":5,"Gunshot wound to abdomen":4,"Spontaneous pneumothorax":2,"Acute appendicitis":1,"Acute cholecystitis":1,"Acute pancreatitis":3,
@@ -1130,10 +1152,16 @@ function evtTick(){
   if(S.evt||S.evtDay===today)return;
   if(S.evtPlanDay!==today){S.evtPlanDay=today;S.evtNext=S.t+rnd(20,120)}
   if(S.t>=S.evtNext){const ok=EVENTS.filter(evtEligible);if(ok.length){startEvent(pick(ok));S.evtDay=today}else S.evtNext=S.t+60}}
+function apptTick(){const C=S.depts.clinic;if(!C||!C.on){S.appts=[];S.apptHr=null;return}
+  if(!S.appts)S.appts=[];const hr=Math.floor(S.t/60);const pool=CONDS.filter(c=>c.appt);
+  for(let h=S.apptHr==null?hr:S.apptHr+1;h<=hr+1;h++){const n=rnd(1,4);for(let i=0;i<n;i++){const at=h*60+rnd(0,59);if(at>S.t)S.appts.push({at,ci:CONDS.indexOf(pick(pool))})}S.apptHr=h}
+  S.appts.sort((a,b)=>a.at-b.at);
+  while(S.appts.length&&S.appts[0].at<=S.t){const a=S.appts.shift();const before=S.seq;arrive(a.ci);const p=S.P['p'+before];
+    if(p&&p.loc==='clinic'){p.appt=a.at;p.v++}else{if(p)gone(p);S.st.away++;log('A patient missed their clinic appointment because the clinic queue was full.','warn')}}}
 function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='clinic';
   const order=[c.d,...c.t,'er'].filter((d,i,a)=>a.indexOf(d)===i&&ok(d));for(const d of order)if(space(d,p||{triaged:false}))return d;return null}
 function arrive(force){
-  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>{const e=evtNow();return (c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)*(e&&e.set&&e.set.has(c.n)?8:1)}));const c=CONDS[ci];
+  const pool=CONDS.filter(c=>!c.appt&&c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>{const e=evtNow();return (c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)*(e&&e.set&&e.set.has(c.n)?8:1)}));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=c.cos?{n:'Self-pay (cosmetic)',c:1}:age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
   const id='p'+(S.seq++);
@@ -1147,7 +1175,7 @@ function arrive(force){
 }
 
 /* ---------- ER: triage → waiting room / diagnostic room ---------- */
-const NURSE_EX=['hx','vitals','spo2','gluc','ecg','ua','hcg','strep','flu','phq','wound'];
+const NURSE_EX=['hx','vitals','spo2','gluc','ecg','ua','hcg','strep','flu','phq','wound','weight','immun'];
 const ROOM_COST=4000, ROOMMAX=6, DOC_PAY=1400;
 const STAGE={queue:'ER queue',tri:'Triage room',wait:'ER waiting room',dx:'Diagnostic room'};
 const isFlow=d=>!!(DEPT[d]&&DEPT[d].kind==='clinic'&&d!=='icu');
@@ -1323,7 +1351,7 @@ function autoAssign(){if(!S)return;const ps=Object.values(S.P).sort((a,b)=>'ryg'
     else if(NAMED_ROLE[p.loc]&&!p.tech&&!p.inW&&ordersHere(p,p.loc).length){const x=take(NAMED_ROLE[p.loc],p.loc);if(x)assignStaff(p,x.id)}}}
 function step(dt){
   S.t+=dt;
-  evtTick();
+  evtTick();apptTick();
   while(S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
   if(today!==S.payDate){S.payDate=today;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
@@ -1411,7 +1439,7 @@ function card(p){
   if(NAMED_ROLE[p.loc]&&!p.busy&&!p.inW)st=p.tech?`With ${esc(staffName(staffById(p.tech)))}`:`Needs a ${ROLE_TITLE[NAMED_ROLE[p.loc]].toLowerCase()}`;
   const showBar=p.busy||p.deadline||(p.adm&&!p.adm.ready);
   return `<button class="pt ${S.pid===p.id?'sel':''} ${p.collapsed?'collapsed':''}" data-act="pt" data-pid="${p.id}">${p.collapsed?'<span class="colbadge">⚠ Collapsed</span>':''}
-   <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span>${p.vip?'<span class="vipb">★ VIP</span>':''}</span>
+   <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span>${p.vip?'<span class="vipb">★ VIP</span>':''}${p.appt!=null?'<span class="apptb">Appointment</span>':''}</span>
    <span class="meta">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span>
    <span class="status ${cls}">${st}</span>${ordLine}
    ${showBar?`<span class="bar ${p.busy||p.adm?'busy':c.p}"><i data-bar="${p.id}"></i></span>`:''}
@@ -1461,6 +1489,9 @@ function icuFlowHTML(p){const D=S.depts.icu;const b=p.busy?'disabled':'';
    ${p.nurse?`<p class="flowtxt">Nurse: <b>${esc(staffName(staffById(p.nurse)))}</b></p>`:`<div class="line wrap"><span class="flowtxt">Nurse:</span>${btns('nurse')}</div>`}
    ${p.doc?`<p class="flowtxt">Doctor: <b>${esc(staffName(staffById(p.doc)))}</b></p>`:`<div class="line wrap"><span class="flowtxt">Doctor:</span>${btns('doctor')}</div>`}
   </div></div>`}
+function apptZone(){const up=(S.appts||[]).filter(a=>a.at>S.t&&a.at<=S.t+60);
+  return `<section class="zone"><div class="zone-h"><h2>Upcoming appointments</h2><span class="cap">${up.length} in the next hour</span><span class="note">Booked patients arrive on time, on top of walk-ins.</span></div>
+   <div class="appts">${up.length?up.map(a=>`<span class="apptchip">in <b class="mono">${fmtDur(Math.max(1,Math.round(a.at-S.t)))}</b></span>`).join(''):'<span class="empty-note">No more appointments this hour.</span>'}</div></section>`}
 function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   const roster=role=>D.staff.filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
     return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
@@ -1473,11 +1504,12 @@ function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
     <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
      <div class="tests"><span>Doctors run every test here, diagnose and treat.${er?'':` Tests here: ${esc(EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v)).map(x=>EXAMS[x].name).join(', ')||'basic exams only')}.`}</span></div></div>
    </div>
+   ${v==='clinic'?apptZone():''}
    <section class="zone"><div class="zone-h"><h2>${er?'ER queue':'Queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span><span class="note">Waiting for a triage room.</span></div>${slots(D.q,QMAX,'Spot','No one waiting')}</section>
    <section class="zone"><div class="zone-h"><h2>Triage rooms</h2><span class="cap">${D.tri.length}/${D.triRooms}</span><span class="note">Assign a nurse to run the first tests.</span>${addRoom('tri',D.triRooms)}</div>${slots(D.tri,D.triRooms,'Triage')}</section>
    <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Triaged, waiting for a doctor.</span></div>${slots(D.w,WMAX,'Seat','Empty')}</section>
    <section class="zone"><div class="zone-h"><h2>Diagnostic rooms</h2><span class="cap">${D.dxr.length}/${D.dxRooms}</span><span class="note">Assign a doctor to examine, diagnose and treat.</span>${addRoom('dx',D.dxRooms)}</div>${slots(D.dxr,D.dxRooms,'Room')}</section>
-   ${recoveryZone(v)}`}
+   ${v==='clinic'?'':recoveryZone(v)}`}
 function erFlowHTML(p){const D=S.depts[p.loc];let h='';const b=p.busy?'disabled':'';const qn=qName(p.loc);
   const pickBtns=(role)=>{const fr=freeStaff(role,p.loc);return fr.length?fr.map(x=>`<button class="btn sm" data-act="assign" data-s="${x.id}" ${b}>Assign ${esc(staffName(x))}</button>`).join(''):`<span class="empty-note">All ${role}s are busy${role==='doctor'?'. The patient keeps the room until one is free.':'.'}</span>`};
   if(p.stage==='queue')h=`<p class="flowtxt">Waiting for triage.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="tri" ${D.tri.length>=D.triRooms?'disabled':''}>Assign triage room</button><span class="empty-note">${D.tri.length}/${D.triRooms} rooms in use</span></div>`;
