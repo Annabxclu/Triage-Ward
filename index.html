@@ -194,7 +194,14 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .person .xs:hover{background:var(--panel2);color:var(--red)}
 .flowtxt{margin:0;font-size:13px}
 .pt .ord{font-size:12px;color:var(--accent);font-weight:700;white-space:normal;line-height:1.3}
-.orders{display:grid;gap:10px}
+.orders{display:grid;gap:10px;margin-top:8px}
+.ordbox summary{list-style:none;cursor:pointer;border-radius:6px}
+.ordbox summary::-webkit-details-marker{display:none}
+.ordbox summary h3{align-items:center}
+.ordbox summary h3::before{content:"";width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;margin-right:8px;transition:transform .15s}
+.ordbox[open] summary h3::before{transform:rotate(90deg)}
+.ordbox summary h3 span{margin-left:auto}
+.ordbox summary:hover h3{color:var(--ink)}
 .ogrp .oh{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
 .line.wrap{flex-wrap:wrap;align-items:center}
 .locked-view{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:22px;display:grid;gap:12px;max-width:640px}
@@ -590,6 +597,7 @@ const SENIOR = {n:'SilverYears',c:.8,w:0};
 /* ================= STATE ================= */
 const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
 let BOOK={}; try{BOOK=JSON.parse(localStorage.getItem(BOOKKEY)||'{}')||{}}catch(e){BOOK={}}
+let ordersOpen=true;try{ordersOpen=localStorage.getItem('hospital-orders-open')!=='0'}catch(e){}
 let lockedOpen=true;try{lockedOpen=localStorage.getItem('hospital-locked-open')!=='0'}catch(e){}
 let bookV=0,bookQ='',bookKey=null,mainMode=null;
 function learn(c){const first=!BOOK[c.n];BOOK[c.n]=(BOOK[c.n]||0)+1;bookV++;try{localStorage.setItem(BOOKKEY,JSON.stringify(BOOK))}catch(e){}
@@ -1067,12 +1075,12 @@ function chartHTML(p){
     const ord=p.orders||[];const groups={};
     EXAM_ORDER.forEach(x=>{const e=EXAMS[x];if(e.depts==='basic'||examHere(x,L)||(x in p.res))return;const d=e.depts.find(dd=>dd==='lab'||dd==='rad');if(!d)return;(groups[d]=groups[d]||[]).push(x)});
     const order=['lab','rad'].filter(d=>groups[d]);
-    h+=`<div class="sec"><h3>Doctor orders <span>${ord.length?`${ord.length} ordered`:'Lab and Radiology · tap to order'}</span></h3>
+    h+=`<details class="sec ordbox" id="ordBox" ${ordersOpen?'open':''}><summary><h3>Doctor orders <span>${ord.length?`${ord.length} ordered`:'Lab and Radiology'}</span></h3></summary>
      <div class="orders">${order.map(d=>`<div class="ogrp"><div class="oh">${esc(DEPT[d].name)}${S.depts[d].on?'':' · locked'}</div><div class="examgrid">${groups[d].map(x=>{const on=ord.includes(x);
-       return `<button class="exam ${on?'queued':''}" data-act="order" data-x="${x}" ${on?'aria-pressed="true"':''}><span class="en">${on?'✓ ':''}${esc(EXAMS[x].name)}</span><span class="ec">${on?'Ordered · tap to cancel':`${fmtDur(EXAMS[x].min)} · ${fmt$(EXAMS[x].cost)}`}</span></button>`}).join('')}</div></div>`).join('')}</div></div>`}
+       return `<button class="exam ${on?'queued':''}" data-act="order" data-x="${x}" ${on?'aria-pressed="true"':''}><span class="en">${on?'✓ ':''}${esc(EXAMS[x].name)}</span><span class="ec">${on?'Ordered · tap to cancel':`${fmtDur(EXAMS[x].min)} · ${fmt$(EXAMS[x].cost)}`}</span></button>`}).join('')}</div></div>`).join('')}</div></details>`}
 
   // actions
-  const opts=DEPTS.filter(d=>S.depts[d.id].on&&d.id!==L&&(d.kind==='clinic'||d.kind==='diag')).map(d=>{const D=S.depts[d.id];const full=!space(d.id,p);const oc=ordersHere(p,d.id).length;
+  const opts=DEPTS.filter(d=>S.depts[d.id].on&&d.id!==L&&(d.kind==='clinic'||d.kind==='diag')).sort((a,b)=>a.name.localeCompare(b.name)).map(d=>{const D=S.depts[d.id];const full=!space(d.id,p);const oc=ordersHere(p,d.id).length;
     return `<option value="${d.id}" ${full?'disabled':''}>${oc?`★ ${oc} ordered · `:''}${esc(d.name)} — ${D.q.length}/${QMAX}${D.w.length?` +${D.w.length} waiting`:''}${full?' (full)':''}</option>`}).join('');
   h+=`<div class="sec"><h3>Decide</h3><div class="act">`;
   if(p.orders&&p.orders.length&&!NAMED_ROLE[L]){const byD={};p.orders.forEach(x=>{const e=EXAMS[x];const d=e.depts==='basic'?'er':(e.depts.find(dd=>S.depts[dd].on)||e.depts[0]);(byD[d]=byD[d]||[]).push(EXAMS[x].name)});
@@ -1177,7 +1185,7 @@ document.addEventListener('click',e=>{
   dirty=true;render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
-document.addEventListener('toggle',e=>{if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
+document.addEventListener('toggle',e=>{if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
 document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
