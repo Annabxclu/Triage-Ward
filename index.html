@@ -508,6 +508,10 @@ X('paracent','Abdominal fluid tap (paracentesis)',20,700,['gs','im'],'No fluid t
 X('ctangio','CT angiogram (aorta and arteries)',25,1800,['rad'],'Normal arteries');
 X('vascus','Vascular ultrasound',20,450,['rad'],'Normal blood flow');
 X('abi','Ankle-brachial index',10,150,['cardio'],'ABI 1.1 (normal)');
+X('vagswab','Vaginal swab (pH, wet mount)',10,60,['sh','ob'],'Normal pH and flora');
+X('hivtest','HIV antigen/antibody and viral load',30,180,['lab','sh'],'HIV negative');
+X('semen','Semen analysis',40,200,['sh'],'Normal semen analysis');
+X('usscrot','Scrotal ultrasound',15,400,['rad','sh'],'Normal testicles and epididymis');
 X('dermoscopy','Dermatoscopy',5,120,['derm'],'No suspicious pattern');
 X('koh','Skin scraping (KOH / mites)',10,80,['derm','sh'],'No fungus or mites');
 X('skinbx','Skin biopsy',20,600,['derm'],'Benign skin');
@@ -563,6 +567,7 @@ M('timolol','Timolol eye drops','Rx',25); M('botant','Botulism antitoxin','Rx',9
 M('hpylkit','H. pylori triple therapy','Rx',180); M('budes','Budesonide','Rx',300); M('mesal','Mesalamine','Rx',350);
 M('dicyclo','Dicyclomine','Rx',15); M('sofos','Sofosbuvir-velpatasvir','Rx',2400); M('lactul','Lactulose','Rx',20);
 M('sevel','Sevelamer','Rx',350); M('pentosan','Pentosan polysulfate','Rx',450); M('levothy','Levothyroxine','Rx',12); M('mtx','Methotrexate','Rx',25);
+M('sildened','Sildenafil 50 mg','Rx',30); M('art','HIV antiretroviral therapy (single tablet)','Rx',3500); M('imiq','Imiquimod cream','Rx',120); M('moxi','Moxifloxacin','Rx',40); M('prep','Emtricitabine-tenofovir (PrEP)','Rx',60); M('permlice','Permethrin 1% lice rinse','OTC',15);
  M('clobet','Clobetasol ointment','Rx',45); M('permeth','Permethrin 5% cream','Rx',35);
 
 const CONDS = [];
@@ -918,6 +923,25 @@ C("Kidney contusion","trauma",["trauma","neph"],"y",[16,60],0,["*hx:Kicked in th
 C("Hemolytic uremic syndrome","neph",["neph","icu"],"r",[2,10],0,["*hx:Bloody diarrhea last week, now barely urinating","*hx:Pale and tired","cbc:Low platelets and anemia","smear:Fragmented red cells","bmp:Creatinine 3.9","stool:E. coli O157 detected"],["Supportive care and dialysis",120,14000],["acet"]);
 C("Campylobacteriosis","im",["im","id","er"],"g",[10,60],0,["*hx:Bloody diarrhea and cramps","hx:Ate undercooked chicken","vitals:Fever 101.1°F","stool:Campylobacter jejuni on stool culture"],["Rehydration and antibiotic",20,400],["azith","ors"]);
 
+/* Sexual Health expansion */
+C("Bacterial vaginosis","sh",["sh","ob"],"g",[18,45],"f",["*hx:Thin gray discharge with a fishy smell","hx:Worse after sex","vagswab:pH 5.5, clue cells, positive whiff test"],["Antibiotic course",10,150],["metronid"]);
+C("Balanitis","sh",["sh"],"g",[18,70],"m",["*hx:Sore, red, itchy tip of the penis","hx:Has diabetes","genital:Red, shiny glans with white patches","koh:Candida yeast on swab"],["Antifungal cream and hygiene advice",10,150],["clotrim"]);
+C("Cervicitis","sh",["sh","ob"],"g",[16,35],"f",["*hx:Spotting after sex","*hx:Yellow vaginal discharge","pelvic:Red cervix that bleeds easily, with discharge","vagswab:Many white cells, no trichomonas"],["Antibiotic course",10,200],["doxy"]);
+C("Epididymitis","sh",["sh","neph"],"y",[16,40],"m",["*hx:Painful, swollen testicle for 2 days","*hx:Burning when urinating","phys:Tender swelling behind the testicle, eases when lifted","ua:White cells in the urine","usscrot:Swollen epididymis with extra blood flow, testicle normal"],["Antibiotic course and scrotal support",15,400],["ceftri","doxy"]);
+C("Erectile dysfunction","sh",["sh","im"],"g",[40,75],"m",["*hx:Trouble getting or keeping erections for 6 months","hx:Smoker with high blood pressure","vitals:BP 152/94","a1c:HbA1c 6.9%"],["Counseling and medication plan",15,250],["sildened"]);
+C("Gonorrhea","sh",["sh","ob"],"g",[16,35],"m",["*hx:Thick yellow discharge from the penis","*hx:Burning when urinating","genital:Pus at the urethral opening","sti:Gonorrhea NAAT positive"],["Injection and partner treatment",15,300],["ceftri"]);
+C("HIV infection (new diagnosis)","sh",["sh","id","im"],"y",[18,55],0,["*hx:Fever, sore throat and rash 3 weeks after a new partner","*hx:Night sweats","phys:Swollen lymph nodes in the neck and groin","cbc:Low white count","hivtest:HIV antigen/antibody positive, viral load 450,000"],["Start antiretroviral therapy and counseling",30,1500],["art"]);
+C("Genital warts (HPV)","sh",["sh","derm","ob"],"g",[18,40],0,["*hx:Painless bumps around the genitals","genital:Soft cauliflower-like warts"],["Cryotherapy and topical treatment",15,300],["imiq"]);
+C("Hyperspermia","sh",["sh"],"g",[22,45],"m",["*hx:Couple trying to conceive for a year","semen:Semen volume 7.5 mL (high), otherwise normal"],["Fertility counseling",15,200],[]);
+C("Hypospermia","sh",["sh"],"g",[22,45],"m",["*hx:Couple trying to conceive for a year","*hx:Very little semen","semen:Semen volume 0.8 mL (low)","usscrot:Normal testicles, no blockage seen"],["Fertility work-up and counseling",15,300],[]);
+C("Molluscum contagiosum","sh",["sh","derm"],"g",[18,40],0,["*hx:Small pearly bumps in the groin","genital:Firm dome-shaped bumps with a central dimple"],["Curettage of the bumps",10,150],[]);
+C("Mycoplasma genitalium infection","sh",["sh"],"g",[18,40],"m",["*hx:Burning urination that came back after doxycycline","genital:Clear urethral discharge","sti:Mycoplasma genitalium NAAT positive"],["Targeted antibiotic course",10,250],["moxi"]);
+C("PrEP visit (HIV prevention)","sh",["sh"],"g",[18,50],0,["*hx:Wants HIV prevention, partner is HIV positive","hivtest:HIV test negative","bmp:Kidney function normal"],["PrEP counseling and prescription",15,200],["prep"]);
+C("Chronic prostatitis","sh",["sh","neph"],"g",[30,60],"m",["*hx:Pelvic and perineal ache for 4 months","*hx:Painful ejaculation","phys:Tender prostate on exam","ua:A few white cells, no bacteria"],["Anti-inflammatory and pelvic floor plan",15,300],["ibu","tams"]);
+C("Pubic lice","sh",["sh","derm"],"g",[18,40],0,["*hx:Intense itching in the pubic hair","genital:Tiny lice and nits on the pubic hairs"],["Topical lice treatment",10,100],["permlice"]);
+C("Trichomoniasis","sh",["sh","ob"],"g",[18,50],"f",["*hx:Frothy yellow-green discharge","*hx:Itching and soreness","pelvic:Red 'strawberry' spots on the cervix","vagswab:Moving trichomonads on wet mount, pH 6.0"],["Antibiotic course and partner treatment",10,150],["metronid"]);
+C("Non-gonococcal urethritis","sh",["sh"],"g",[18,40],"m",["*hx:Burning urination and clear discharge","genital:Clear urethral discharge","ua:White cells, no nitrites"],["Antibiotic course",10,200],["doxy"]);
+C("Secondary syphilis","sh",["sh","derm","id"],"y",[18,50],0,["*hx:Rash on the palms and soles that doesn't itch","*hx:Had a painless sore 2 months ago","phys:Coppery spots on palms and soles, swollen glands","sti:RPR reactive (high titer), treponemal antibody positive"],["Injection and follow-up plan",15,300],["pcn"]);
 CONDS.forEach((c,i)=>{c.rare=i>=CORE_N&&i<ID_END});
 const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart attack)":3,"Atrial fibrillation with RVR":1,"Heart failure exacerbation":3,
  "Tibial shaft fracture":2,"Hip fracture":3,"Community-acquired pneumonia":2,"Diabetic ketoacidosis":2,"Upper GI bleed":2,"Bacterial meningitis":4,"Urosepsis":3,
@@ -1138,6 +1162,7 @@ function dischargeAdm(p){
   p.adm=null;toPharmOrHome(p);
 }
 function toPharmOrHome(p){
+  if(!cond(p).rx.length){log(`${pname(p)} went home. No medication needed.`);gone(p);return}
   const P=S.depts.pharm;
   if(P.on&&space('pharm')){removeFrom(p);p.from=null;addTo(p,'pharm');p.phT=S.t;}
   else{log(`${pname(p)} went home with a paper prescription${P.on?' (pharmacy full)':''}.`);gone(p)}
