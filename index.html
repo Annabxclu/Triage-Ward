@@ -648,28 +648,34 @@ function arrive(force){
 const NURSE_EX=['hx','vitals','spo2','gluc','ecg','ua','hcg','strep','flu','phq','wound'];
 const ROOM_COST=4000, ROOMMAX=6, DOC_PAY=1400;
 const STAGE={queue:'ER queue',tri:'Triage room',wait:'ER waiting room',dx:'Diagnostic room'};
+const isFlow=d=>!!(DEPT[d]&&DEPT[d].kind==='clinic');
+const stageName=p=>p.loc==='er'?STAGE[p.stage]:({queue:'Queue',tri:'Triage room',wait:'Waiting room',dx:'Diagnostic room'})[p.stage];
+const qName=d=>d==='er'?'ER queue':'queue';
 const NAMED_ROLE={lab:'labtech',rad:'radtech'};
 const ROLE_TITLE={doctor:'Dr.',nurse:'Nurse',labtech:'Lab Tech',radtech:'Rad Tech'};
-function allStaff(){return ['er','lab','rad'].flatMap(d=>(S.depts[d]&&S.depts[d].staff)||[])}
-function syncStaff(d){const D=S.depts[d];if(!D.staff)return;if(d==='er'){D.nurse=D.staff.filter(x=>x.role==='nurse').length;D.lead=D.staff.filter(x=>x.role==='doctor').length}else D.lead=D.staff.length}
+function allStaff(){return DEPTS.map(d=>d.id).flatMap(d=>(S.depts[d]&&S.depts[d].staff)||[])}
+function syncStaff(d){const D=S.depts[d];if(!D.staff)return;if(isFlow(d)){D.nurse=D.staff.filter(x=>x.role==='nurse').length;D.lead=D.staff.filter(x=>x.role==='doctor').length}else D.lead=D.staff.length}
 function syncER(){syncStaff('er')}
 function hireNamed(role,d='er'){const D=S.depts[d];if(!D.staff)D.staff=[];const used=new Set(allStaff().map(x=>x.last));const pool=LAST.filter(l=>!used.has(l));
   D.staff.push({id:'s'+(S.seq++),role,d,last:pool.length?pick(pool):pick(LAST)+' '+(D.staff.length+1)});syncStaff(d)}
-function erInit(){const D=S.depts.er;if(!D.tri)D.tri=[];if(!D.dxr)D.dxr=[];if(!D.triRooms)D.triRooms=2;if(!D.dxRooms)D.dxRooms=2;
-  if(!D.staff){const n=D.nurse,l=D.lead;D.staff=[];for(let i=0;i<n;i++)hireNamed('nurse');for(let i=0;i<l;i++)hireNamed('doctor')}syncER();
+function erInit(){DEPTS.filter(d=>d.kind==='clinic').forEach(dd=>{const d=dd.id,D=S.depts[d];if(!D.tri)D.tri=[];if(!D.dxr)D.dxr=[];if(!D.triRooms)D.triRooms=2;if(!D.dxRooms)D.dxRooms=2;
+  if(!D.staff){const n=D.nurse,l=D.lead;D.staff=[];for(let i=0;i<n;i++)hireNamed('nurse',d);for(let i=0;i<l;i++)hireNamed('doctor',d)}syncStaff(d);
+    const old=[...D.q,...D.w].filter(id=>S.P[id]&&!S.P[id].stage);
+    if(old.length){D.q=D.q.filter(id=>!old.includes(id));D.w=D.w.filter(id=>!old.includes(id));
+      old.forEach(id=>{const p=S.P[id];p.inW=false;if(D.q.length<QMAX){D.q.push(id);p.stage='queue'}else{D.w.push(id);p.stage='wait';p.triaged=true}})}});
   ['lab','rad'].forEach(d=>{const X=S.depts[d];if(!X.staff){const n=X.lead;X.staff=[];for(let i=0;i<n;i++)hireNamed(NAMED_ROLE[d],d)}syncStaff(d)})}
 const staffName=x=>x?`${ROLE_TITLE[x.role]} ${x.last}`:'';
 function staffById(id){return allStaff().find(x=>x.id===id)}
 function staffBusyWith(id){for(const k in S.P){const p=S.P[k];if(p.nurse===id||p.doc===id||p.tech===id)return p}return null}
 function freeStaff(role,d='er'){return (S.depts[d].staff||[]).filter(x=>x.role===role&&!staffBusyWith(x.id))}
-function erExamOK(p,x){if(p.loc!=='er')return true;if(p.stage==='tri')return NURSE_EX.includes(x);return p.stage==='dx'}
-function canRun(p){if(NAMED_ROLE[p.loc])return !!p.tech;if(p.loc==='er')return (p.stage==='tri'&&!!p.nurse)||(p.stage==='dx'&&!!p.doc);return canWork(p.loc)}
-function canTreat(p){if(p.loc==='er')return p.stage==='dx'&&!!p.doc;return canWork(p.loc)}
-function erMove(p,to){const D=S.depts.er;if(p.loc!=='er'||p.busy)return;
+function erExamOK(p,x){if(!isFlow(p.loc))return true;if(p.stage==='tri')return NURSE_EX.includes(x);return p.stage==='dx'}
+function canRun(p){if(NAMED_ROLE[p.loc])return !!p.tech;if(isFlow(p.loc))return (p.stage==='tri'&&!!p.nurse)||(p.stage==='dx'&&!!p.doc);return canWork(p.loc)}
+function canTreat(p){if(isFlow(p.loc))return p.stage==='dx'&&!!p.doc;return canWork(p.loc)}
+function erMove(p,to){if(!isFlow(p.loc)||p.busy)return;const D=S.depts[p.loc];
   if(to==='tri'&&D.tri.length>=D.triRooms){toast('No triage room is free.');return}
   if(to==='dx'&&D.dxr.length>=D.dxRooms){toast('No diagnostic room is free.');return}
-  if(to==='wait'&&D.w.length>=WMAX){toast('The ER waiting room is full.');return}
-  if(to==='queue'&&D.q.length>=QMAX){toast('The ER queue is full.');return}
+  if(to==='wait'&&D.w.length>=WMAX){toast('The waiting room is full.');return}
+  if(to==='queue'&&D.q.length>=QMAX){toast(`The ${qName(p.loc)} is full.`);return}
   ['q','w','tri','dxr'].forEach(k=>D[k]=D[k].filter(x=>x!==p.id));
   if(p.stage==='tri'&&to!=='queue')p.triaged=true;
   p.nurse=null;if(to!=='dx')p.doc=null;p.tq=[];
@@ -678,19 +684,19 @@ function ordersHere(p,d){return (p.orders||[]).filter(o=>examHere(o,d)&&!(o in p
 function assignStaff(p,sid){const x=staffById(sid);if(!x||staffBusyWith(sid))return;
   if(NAMED_ROLE[p.loc]&&NAMED_ROLE[p.loc]===x.role){if(p.tech||p.inW)return;p.tech=sid;const here=ordersHere(p,p.loc);
     p.tq=[...new Set([...(p.tq||[]),...here])];p.techAuto=here.length>0;p.v++;dirty=true;tryNext(p);return}
-  if(p.loc!=='er')return;
+  if(!isFlow(p.loc)||(x.d||'er')!==p.loc)return;
   if(x.role==='nurse'&&p.stage==='tri')p.nurse=sid;else if(x.role==='doctor'&&p.stage==='dx')p.doc=sid;else return;
   p.v++;dirty=true;tryNext(p)}
 
 /* ---------- placement ---------- */
-function space(d,p){const D=S.depts[d];if(d==='er')return p&&p.triaged?D.w.length<WMAX:D.q.length<QMAX;return D.q.length<QMAX||D.w.length<WMAX}
+function space(d,p){const D=S.depts[d];if(isFlow(d))return p&&p.triaged?D.w.length<WMAX:D.q.length<QMAX;return D.q.length<QMAX||D.w.length<WMAX}
 function addTo(p,d){const D=S.depts[d];
-  if(d==='er'){p.inW=false;if(p.triaged){if(D.w.length>=WMAX)return false;D.w.push(p.id);p.stage='wait'}else{if(D.q.length>=QMAX)return false;D.q.push(p.id);p.stage='queue'}p.loc=d;p.v++;return true}if(D.q.length<QMAX){D.q.push(p.id);p.inW=false}else if(D.w.length<WMAX){D.w.push(p.id);p.inW=true}else return false;p.loc=d;p.v++;return true}
+  if(isFlow(d)){p.inW=false;if(p.triaged){if(D.w.length>=WMAX)return false;D.w.push(p.id);p.stage='wait'}else{if(D.q.length>=QMAX)return false;D.q.push(p.id);p.stage='queue'}p.loc=d;p.v++;return true}if(D.q.length<QMAX){D.q.push(p.id);p.inW=false}else if(D.w.length<WMAX){D.w.push(p.id);p.inW=true}else return false;p.loc=d;p.v++;return true}
 function removeFrom(p){
   p.tech=null;p.techAuto=false;
   if(p.loc==='rec')S.rec=S.rec.filter(x=>x!==p.id);
   else if(p.loc==='morgue')S.morgue=S.morgue.filter(x=>x!==p.id);
-  else if(p.loc==='er'){const D=S.depts.er;['q','w','tri','dxr','adm'].forEach(k=>D[k]=(D[k]||[]).filter(x=>x!==p.id));p.nurse=null;p.doc=null;p.stage=null}
+  else if(isFlow(p.loc)){const D=S.depts[p.loc];['q','w','tri','dxr','adm'].forEach(k=>D[k]=(D[k]||[]).filter(x=>x!==p.id));p.nurse=null;p.doc=null;p.stage=null}
   else if(S.depts[p.loc]){const D=S.depts[p.loc];D.q=D.q.filter(x=>x!==p.id);D.adm=(D.adm||[]).filter(x=>x!==p.id);D.w=D.w.filter(x=>x!==p.id);
     while(D.q.length<QMAX&&D.w.length){const nid=D.w.shift();D.q.push(nid);const np=S.P[nid];if(np){np.inW=false;np.v++}}}
 }
@@ -700,7 +706,7 @@ function gone(p){removeFrom(p);delete S.P[p.id];if(S.pid===p.id)S.pid=null;dirty
 function busyCount(d){let n=0;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.d===d)n++}return n}
 function bedsUsed(d){const D=S.depts[d];let n=(D.adm||[]).length;for(const k in S.P){const p=S.P[k];if(p.busy&&p.busy.k==='treat'&&p.busy.d===d&&cond(p).los)n++}return n}
 function canWork(d){const D=S.depts[d];return D&&D.on&&D.lead>0&&busyCount(d)<D.lead}
-function dur(min,d){const D=S.depts[d];const cut=DEPT[d].kind==='clinic'&&d!=='er'?Math.min(.4,D.nurse*.1):0;return Math.max(1,Math.round(min*(1-cut)))}
+function dur(min,d){const D=S.depts[d];const cut=0;return Math.max(1,Math.round(min*(1-cut)))}
 function examHere(x,d){const e=EXAMS[x];if(!d||!DEPT[d])return false;return e.depts==='basic'?DEPT[d].kind==='clinic':e.depts.includes(d)}
 
 /* ---------- actions ---------- */
@@ -724,7 +730,7 @@ function startTreat(p){
   log(`Treatment started for ${pname(p)}: ${c.tx[0]}.`);
 }
 function startStab(p){
-  if(p.busy||p.inW||p.stab>=2||!['er','icu'].includes(p.loc)||!p.deadline||(p.loc==='er'?!(p.nurse||p.doc):!canWork(p.loc)))return;
+  if(p.busy||p.inW||p.stab>=2||!['er','icu'].includes(p.loc)||!p.deadline||(isFlow(p.loc)?!(p.nurse||p.doc):!canWork(p.loc)))return;
   p.busy={k:'stab',d:p.loc,start:S.t,end:S.t+4};p.v++;dirty=true;
 }
 function startAutopsy(p){
@@ -732,7 +738,7 @@ function startAutopsy(p){
   p.busy={k:'autopsy',d:'path',start:S.t,end:S.t+dur(30,'path')};p.v++;dirty=true;
 }
 function diagnose(p,ci){
-  if(p.loc==='er'&&!(p.stage==='dx'&&p.doc))return;
+  if(isFlow(p.loc)&&!(p.stage==='dx'&&p.doc))return;
   const c=cond(p);
   if(ci===p.c){p.dx=ci;rep(1);learn(c);p.v++;dirty=true;log(`Correct diagnosis: ${pname(p)} has ${c.n}.`,'good');toast(`Correct: ${c.n}`,'good');}
   else{S.st.misdx++;rep(-5);learn(c);log(`Misdiagnosis: ${pname(p)} was told ${CONDS[ci].n} but had ${c.n}. They left unhappy.`,'bad');
@@ -741,7 +747,6 @@ function diagnose(p,ci){
 function sendTo(p,d){
   if(p.busy||!S.depts[d]||!S.depts[d].on||p.loc===d||!space(d,p))return;
   p.tq=[];const from=p.loc;removeFrom(p);p.from=from==='rec'?null:from;addTo(p,d);dirty=true;
-  if(DEPT[d].kind==='clinic'&&d!=='er'){const here=ordersHere(p,d);if(here.length)p.tq=here}
   if(S.pid===p.id&&from==='rec'){}/* keep chart open */
 }
 function transfer(p){
@@ -799,7 +804,7 @@ function complete(p){
 
 /* ---------- simulation ---------- */
 /* the leave / critical clock only runs while a patient is waiting (reception, a queue, a waiting room) */
-function beingSeen(p){if(p.busy||p.adm)return true;if(p.loc==='er')return p.stage==='tri'||p.stage==='dx';if(NAMED_ROLE[p.loc])return !!p.tech;return false}
+function beingSeen(p){if(p.busy||p.adm)return true;if(isFlow(p.loc))return p.stage==='tri'||p.stage==='dx';if(NAMED_ROLE[p.loc])return !!p.tech;return false}
 function step(dt){
   S.t+=dt;
   while(S.t>=S.next){arrive();S.next+=ARRIVAL}
@@ -852,7 +857,7 @@ function renderSide(){
    <div>Misdiagnosed <b>${S.st.misdx}</b></div><div>Turned away <b>${S.st.away}</b></div></div></div>
   <details class="help"><summary>How a case flows</summary><ol>
    <li>Click a patient at Reception and read the complaint. The name color is triage: red, yellow, green.</li>
-   <li>Send them to an open department. In the ER: assign a triage room and a nurse for the first tests, then the waiting room or a diagnostic room with a doctor.</li>
+   <li>Send them to an open department. In every ward: assign a triage room and a nurse for the first tests, then the waiting room or a diagnostic room with a doctor.</li>
    <li>Run tests to uncover findings. For imaging or blood work, tick Doctor orders, send the patient to Radiology or the Lab, assign a tech, then return them.</li>
    <li>Pick the diagnosis. The chart's Likely diagnoses list shows the odds from what you've uncovered so far. A wrong guess sends the patient home without paying.</li>
    <li>Treat in a department that handles that condition, or transfer them out. Bigger cases then need a recovery bed; discharge them when their stay ends.</li>
@@ -870,7 +875,7 @@ function card(p){
   else if(p.treated)st='Waiting for medication';
   else if(p.inW)st='In waiting room';
   else if(p.dx===p.c){st=`Dx: ${esc(c.n)}`;cls='dx'}
-  else if(p.loc==='er'&&p.stage){const sn=id=>esc(staffName(staffById(id)));
+  else if(isFlow(p.loc)&&p.stage){const sn=id=>esc(staffName(staffById(id)));
     st=p.stage==='queue'?'Waiting for triage':p.stage==='tri'?(p.nurse?`Triage · ${sn(p.nurse)}`:'Triage room · needs a nurse'):p.stage==='wait'?'Waiting for a doctor':(p.doc?`With ${sn(p.doc)}`:'Diagnostic room · needs a doctor')}
   else if(p.loc==='rec')st='Needs triage';
   else{const n=Object.keys(p.res).length;st=n?`${n} test${n>1?'s':''} done`:'Ready for exam'}
@@ -908,32 +913,32 @@ function techRoster(v){const D=S.depts[v],role=NAMED_ROLE[v],pay=leadRole(v)[1];
   const ppl=(D.staff||[]).map(x=>{const w=staffBusyWith(x.id);return `<div class="person ${w?'busy':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff. Hire one to run tests.</span>';
   return `<div class="roster"><div class="rgrp"><div class="rh"><b>${ROLE_TITLE[role]}s</b><span class="sal">${fmt$(pay)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<pay?'disabled':''}>Hire ${ROLE_TITLE[role].toLowerCase()}</button></div><div class="people">${ppl}</div>
     <div class="tests"><span>Open a patient and assign a ${ROLE_TITLE[role].toLowerCase()}. They run the doctor's orders, then free up.</span></div></div></div>`}
-function erView(){const d=DEPT.er,D=S.depts.er;
+function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   const roster=role=>D.staff.filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
     return `<div class="person ${w?'busy':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
-  const addRoom=(k,n)=>`<button class="btn sm" data-act="addroom" data-k="${k}" ${n>=ROOMMAX||S.money<ROOM_COST?'disabled':''}>${n>=ROOMMAX?'Max rooms':`Add room · ${fmt$(ROOM_COST)}`}</button>`;
+  const addRoom=(k,n)=>`<button class="btn sm" data-act="addroom" data-d="${v}" data-k="${k}" ${n>=ROOMMAX||S.money<ROOM_COST?'disabled':''}>${n>=ROOMMAX?'Max rooms':`Add room · ${fmt$(ROOM_COST)}`}</button>`;
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Queue, then a triage room with a nurse, then the waiting room or a diagnostic room with a doctor.</p></div></div></div>
    <div class="roster">
-    <div class="rgrp"><div class="rh"><b>Nurses</b><span class="sal">${fmt$(NURSE_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="er" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
-     <div class="tests"><span>Nurse tests:</span>${NURSE_EX.map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div></div>
-    <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="er" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
-     <div class="tests"><span>Doctors run every ER test, diagnose and treat.</span></div></div>
+    <div class="rgrp"><div class="rh"><b>Nurses</b><span class="sal">${fmt$(NURSE_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
+     <div class="tests"><span>Nurse tests:</span>${NURSE_EX.filter(x=>examHere(x,v)).map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div></div>
+    <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
+     <div class="tests"><span>Doctors run every test here, diagnose and treat.${er?'':` Tests here: ${esc(EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v)).map(x=>EXAMS[x].name).join(', ')||'basic exams only')}.`}</span></div></div>
    </div>
-   <section class="zone"><div class="zone-h"><h2>ER queue</h2><span class="cap">${D.q.length}/${QMAX}</span><span class="note">Waiting for a triage room.</span></div>${slots(D.q,QMAX,'Spot','No one waiting')}</section>
+   <section class="zone"><div class="zone-h"><h2>${er?'ER queue':'Queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span><span class="note">Waiting for a triage room.</span></div>${slots(D.q,QMAX,'Spot','No one waiting')}</section>
    <section class="zone"><div class="zone-h"><h2>Triage rooms</h2><span class="cap">${D.tri.length}/${D.triRooms}</span><span class="note">Assign a nurse to run the first tests.</span>${addRoom('tri',D.triRooms)}</div>${slots(D.tri,D.triRooms,'Triage')}</section>
    <section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Triaged, waiting for a doctor.</span></div>${slots(D.w,WMAX,'Seat','Empty')}</section>
    <section class="zone"><div class="zone-h"><h2>Diagnostic rooms</h2><span class="cap">${D.dxr.length}/${D.dxRooms}</span><span class="note">Assign a doctor to examine, diagnose and treat.</span>${addRoom('dx',D.dxRooms)}</div>${slots(D.dxr,D.dxRooms,'Room')}</section>
-   ${recoveryZone('er')}`}
-function erFlowHTML(p){const D=S.depts.er;let h='';const b=p.busy?'disabled':'';
-  const pickBtns=(role)=>{const fr=freeStaff(role);return fr.length?fr.map(x=>`<button class="btn sm" data-act="assign" data-s="${x.id}" ${b}>Assign ${esc(staffName(x))}</button>`).join(''):`<span class="empty-note">All ${role}s are busy${role==='doctor'?'. The patient keeps the room until one is free.':'.'}</span>`};
+   ${recoveryZone(v)}`}
+function erFlowHTML(p){const D=S.depts[p.loc];let h='';const b=p.busy?'disabled':'';const qn=qName(p.loc);
+  const pickBtns=(role)=>{const fr=freeStaff(role,p.loc);return fr.length?fr.map(x=>`<button class="btn sm" data-act="assign" data-s="${x.id}" ${b}>Assign ${esc(staffName(x))}</button>`).join(''):`<span class="empty-note">All ${role}s are busy${role==='doctor'?'. The patient keeps the room until one is free.':'.'}</span>`};
   if(p.stage==='queue')h=`<p class="flowtxt">Waiting for triage.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="tri" ${D.tri.length>=D.triRooms?'disabled':''}>Assign triage room</button><span class="empty-note">${D.tri.length}/${D.triRooms} rooms in use</span></div>`;
   else if(p.stage==='tri')h=`${p.nurse?`<p class="flowtxt">With <b>${esc(staffName(staffById(p.nurse)))}</b>. Run nurse tests below, then move them on.</p>`:`<p class="flowtxt">In a triage room. Assign a nurse:</p><div class="line wrap">${pickBtns('nurse')}</div>`}
-     <div class="line wrap"><button class="btn" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>To waiting room (${D.w.length}/${WMAX})</button><button class="btn primary" data-act="ermove" data-to="dx" ${b||D.dxr.length>=D.dxRooms?'disabled':''}>To diagnostic room (${D.dxr.length}/${D.dxRooms})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
-  else if(p.stage==='wait')h=`<p class="flowtxt">Triaged. Waiting for a doctor.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="dx" ${D.dxr.length>=D.dxRooms?'disabled':''}>Move to diagnostic room (${D.dxr.length}/${D.dxRooms})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
+     <div class="line wrap"><button class="btn" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>To waiting room (${D.w.length}/${WMAX})</button><button class="btn primary" data-act="ermove" data-to="dx" ${b||D.dxr.length>=D.dxRooms?'disabled':''}>To diagnostic room (${D.dxr.length}/${D.dxRooms})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ${qn} (${D.q.length}/${QMAX})</button></div>`;
+  else if(p.stage==='wait')h=`<p class="flowtxt">Triaged. Waiting for a doctor.</p><div class="line wrap"><button class="btn primary" data-act="ermove" data-to="dx" ${D.dxr.length>=D.dxRooms?'disabled':''}>Move to diagnostic room (${D.dxr.length}/${D.dxRooms})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ${qn} (${D.q.length}/${QMAX})</button></div>`;
   else if(p.stage==='dx')h=`${p.doc?`<p class="flowtxt">With <b>${esc(staffName(staffById(p.doc)))}</b>.</p>`:`<p class="flowtxt">In a diagnostic room. Assign a doctor:</p><div class="line wrap">${pickBtns('doctor')}</div>`}
-     <div class="line wrap"><button class="btn sm" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>Back to waiting room (${D.w.length}/${WMAX})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ER queue (${D.q.length}/${QMAX})</button></div>`;
-  return h?`<div class="sec"><h3>Emergency room <span>${esc(STAGE[p.stage]||'')}</span></h3><div class="act">${h}</div></div>`:''}
+     <div class="line wrap"><button class="btn sm" data-act="ermove" data-to="wait" ${b||D.w.length>=WMAX?'disabled':''}>Back to waiting room (${D.w.length}/${WMAX})</button><button class="btn sm" data-act="ermove" data-to="queue" ${b||D.q.length>=QMAX?'disabled':''}>Back to ${qn} (${D.q.length}/${QMAX})</button></div>`;
+  return h?`<div class="sec"><h3>${esc(DEPT[p.loc].name)} <span>${esc(stageName(p)||'')}</span></h3><div class="act">${h}</div></div>`:''}
 function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
 
 function renderMain(){
@@ -961,7 +966,7 @@ function renderMain(){
        <div class="locked-view"><p>${d.kind==='pharm'?'Treated patients come here for medication. You choose what to dispense and earn on every correct item.':d.kind==='path'?'Patients who die are brought here. A pathologist can perform an autopsy to find the cause of death for a county fee.':''}
        ${ex.length?`<b>Tests:</b> ${esc(ex.join(', '))}.`:''}</p>${tr.length?`<p><b>Treats:</b> ${esc(tr.join(', '))}.</p>`:''}
        <div><button class="btn primary" data-act="unlock" data-d="${v}" ${S.money<d.cost?'disabled':''}>Unlock for ${fmt$(d.cost)}</button></div></div>`;
-    } else if(v==='er'){h+=erView();
+    } else if(isFlow(v)){h+=erView(v);
     } else {
       const role=leadRole(v);
       h+=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
@@ -1002,7 +1007,7 @@ function chartHTML(p){
   let h=`<div class="ch-head"><div class="clip"><div><h2 class="pr-${c.p}">${esc(pname(p))}</h2>
    <div class="sub">${p.age} · ${p.sex==='f'?'Female':'Male'} · ${esc(p.ins)} <span class="mono">(collects ${Math.round(p.cov*100)}% of charges)</span></div></div>
    <button class="xbtn" data-act="close" aria-label="Close chart">×</button></div>
-   <div class="tags"><span class="tag ${c.p}">${PRIO[c.p]}</span><span class="tag">${esc(locName(L))}${L==='er'&&p.stage?' · '+esc(STAGE[p.stage]):p.inW?' · waiting room':''}</span>
+   <div class="tags"><span class="tag ${c.p}">${PRIO[c.p]}</span><span class="tag">${esc(locName(L))}${isFlow(L)&&p.stage?' · '+esc(stageName(p)):p.inW?' · waiting room':''}</span>
    ${p.deadline?`<span class="tag mono ${c.p}" data-dlt="${p.id}"></span>`:''}</div></div>`;
 
   if(L==='morgue'){
@@ -1051,7 +1056,7 @@ function chartHTML(p){
   if(done.length)h+=`<div class="sec"><h3>Test results</h3><div class="results">${done.map(x=>`<div class="res ${p.res[x]?'pos':''}"><b>${esc(EXAMS[x].name)}</b>${p.res[x]?esc(p.res[x].join('; ')):esc(EXAMS[x].norm)}</div>`).join('')}</div></div>`;
 
   if(p.busy)h+=busyBox(p);
-  if(L==='er')h+=erFlowHTML(p);
+  if(isFlow(L))h+=erFlowHTML(p);
   if(NAMED_ROLE[L]){const here=ordersHere(p,L),role=NAMED_ROLE[L],t=ROLE_TITLE[role],fr=freeStaff(role,L);
     h+=`<div class="sec"><h3>Doctor's orders <span>${here.length?`${here.length} for ${esc(DEPT[L].name)}`:'none here'}</span></h3>
      ${here.length?`<ul class="findings">${here.map(x=>`<li>${esc(EXAMS[x].name)}<span class="src">${(p.tq||[]).includes(x)?'queued':p.busy&&p.busy.x===x?'running':'pending'}</span></li>`).join('')}</ul>`:'<span class="empty-note">No tests were ordered for this department. You can still run tests below.</span>'}
@@ -1060,14 +1065,14 @@ function chartHTML(p){
   if(p.dx===p.c){
     const here=c.t.includes(L);
     h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>Treatment: ${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}${c.los?`<br>Then ${fmtDur(c.los*DAY)} in ${here&&isObs(L)?'an observation room':'a recovery bed'}`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
-     ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${L==='er'?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
+     ${here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${isFlow(L)?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
   // exams here
-  if(L!=='rec'&&dk!=='pharm'&&(L!=='er'||p.stage==='tri'||p.stage==='dx')){
+  if(L!=='rec'&&dk!=='pharm'&&(!isFlow(L)||p.stage==='tri'||p.stage==='dx')){
     const here=EXAM_ORDER.filter(x=>examHere(x,L)&&erExamOK(p,x));
-    const nq=(p.tq||[]).length;const who=L==='er'?(p.stage==='tri'?'nurse':'doctor'):'';
-    h+=`<div class="sec"><h3>${L==='er'?(p.stage==='tri'?'Nurse tests':'Doctor tests'):'Run a test here'} <span>${L==='er'?(nq?`${nq}/${TQMAX} queued`:canRun(p)?'tap to run or queue':`assign a ${who} · tap to queue`):!S.depts[L].lead?'no staff':nq?`${nq}/${TQMAX} queued`:canRun(p)?'tap to run or queue':NAMED_ROLE[L]?'assign a tech · tap to queue':'staff busy · tap to queue'}</span></h3>
+    const nq=(p.tq||[]).length;const who=isFlow(L)?(p.stage==='tri'?'nurse':'doctor'):'';
+    h+=`<div class="sec"><h3>${isFlow(L)?(p.stage==='tri'?'Nurse tests':'Doctor tests'):'Run a test here'} <span>${isFlow(L)?(nq?`${nq}/${TQMAX} queued`:canRun(p)?'tap to run or queue':`assign a ${who} · tap to queue`):!S.depts[L].lead?'no staff':nq?`${nq}/${TQMAX} queued`:canRun(p)?'tap to run or queue':NAMED_ROLE[L]?'assign a tech · tap to queue':'staff busy · tap to queue'}</span></h3>
      ${p.inW?'<div class="callout warn">In the waiting room. Tests start once a seat in the queue opens.</div>':''}
      <div class="examgrid">${here.map(x=>{const e=EXAMS[x];const dn=!!(x in p.res);
       const qi=(p.tq||[]).indexOf(x);const run=!!(p.busy&&p.busy.k==='exam'&&p.busy.x===x);
@@ -1075,7 +1080,7 @@ function chartHTML(p){
   }
 
   // doctor orders: tests from other departments
-  if(dk==='clinic'&&p.dx!==p.c&&(L!=='er'||(p.stage==='dx'&&p.doc))){
+  if(dk==='clinic'&&p.dx!==p.c&&(!isFlow(L)||(p.stage==='dx'&&p.doc))){
     const ord=p.orders||[];const groups={};
     EXAM_ORDER.forEach(x=>{const e=EXAMS[x];if(e.depts==='basic'||examHere(x,L)||(x in p.res))return;const d=e.depts.find(dd=>dd==='lab'||dd==='rad');if(!d)return;(groups[d]=groups[d]||[]).push(x)});
     const order=['lab','rad'].filter(d=>groups[d]);
@@ -1091,16 +1096,16 @@ function chartHTML(p){
     h+=`<div class="callout">Doctor's orders waiting: ${Object.keys(byD).map(d=>`<b>${esc(DEPT[d].name)}</b> (${esc(byD[d].join(', '))})`).join('; ')}. Send them there to have it done.</div>`}
   if(p.from&&S.depts[p.from]&&S.depts[p.from].on&&p.from!==L)h+=`<button class="btn" data-act="return" ${p.busy||!space(p.from,p)?'disabled':''}>↩ Return to ${esc(DEPT[p.from].name)}</button>`;
   h+=`<label for="sendTo">Send to department</label><div class="line"><select id="sendTo"><option value="">Choose…</option>${opts}</select><button class="btn" data-act="send" ${p.busy?'disabled':''}>Send</button></div>`;
-  if(dk==='clinic'&&p.dx!==p.c&&(L!=='er'||(p.stage==='dx'&&p.doc))){
+  if(dk==='clinic'&&p.dx!==p.c&&(!isFlow(L)||(p.stage==='dx'&&p.doc))){
     const groups={};CONDS.forEach((cc,i)=>{(groups[cc.d]=groups[cc.d]||[]).push([cc.n,i])});
     const pct=i=>{const v=LK?LK[i]:0;return v>=.01?` — ${Math.round(v*100)}%`:''};
     const topI=LK?LK.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).filter(x=>x[0]>=.01).slice(0,5).map(x=>x[1]):[];
     h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${topI.length?`<optgroup label="Most likely">${topI.map(i=>`<option value="${i}">${esc(CONDS[i].n)}${pct(i)}</option>`).join('')}</optgroup>`:''}${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}${pct(i)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy?'disabled':''}>Confirm</button></div>`;
-  } else if(L==='er'&&p.dx!==p.c)h+=`<span class="empty-note">A doctor makes the diagnosis in a diagnostic room.</span>`;
+  } else if(isFlow(L)&&p.dx!==p.c)h+=`<span class="empty-note">A doctor makes the diagnosis in a diagnostic room.</span>`;
   else if(L==='rec')h+=`<span class="empty-note">Tests and diagnosis happen once they're in a department.</span>`;
   else if(dk==='diag')h+=`<span class="empty-note">Diagnostic departments run tests only. Send them back to a ward to diagnose.</span>`;
   const canStab=['er','icu'].includes(L)&&p.deadline&&c.p==='r'&&p.stab<2;
-  h+=`<div class="line" style="flex-wrap:wrap">${canStab?`<button class="btn" data-act="stab" ${!p.busy&&!p.inW&&(L==='er'?!!(p.nurse||p.doc):canWork(L))?'':'disabled'}>Stabilize (+25 minutes, $400)</button>`:''}
+  h+=`<div class="line" style="flex-wrap:wrap">${canStab?`<button class="btn" data-act="stab" ${!p.busy&&!p.inW&&(isFlow(L)?!!(p.nurse||p.doc):canWork(L))?'':'disabled'}>Stabilize (+25 minutes, $400)</button>`:''}
      <button class="btn danger" data-act="xfer" ${p.busy?'disabled':''}>Transfer to another hospital</button></div></div>
    <div class="bill"><span>Charges so far</span><b>${fmt$(p.bill)} → you collect ${fmt$(p.bill*p.cov)}</b></div></div>`;
   return h;
@@ -1158,7 +1163,7 @@ document.addEventListener('click',e=>{
     case 'testmode':S.test=!S.test;if(S.test)log('Test mode turned on.','warn');break;
     case 'tmoney':S.money+=+b.dataset.n;toast(`Added ${fmt$(+b.dataset.n)}.`);break;
     case 'tunlock':DEPTS.forEach(d=>{S.depts[d.id].on=true});log('Test mode: every department unlocked.','warn');toast('Every department unlocked.');break;
-    case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(d.id==='er'){while(D.staff.filter(x=>x.role==='nurse').length<2)hireNamed('nurse');while(D.staff.filter(x=>x.role==='doctor').length<2)hireNamed('doctor');return}if(NAMED_ROLE[d.id]){while((D.staff||[]).length<2)hireNamed(NAMED_ROLE[d.id],d.id);return}if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
+    case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(isFlow(d.id)){while(D.staff.filter(x=>x.role==='nurse').length<2)hireNamed('nurse',d.id);while(D.staff.filter(x=>x.role==='doctor').length<2)hireNamed('doctor',d.id);return}if(NAMED_ROLE[d.id]){while((D.staff||[]).length<2)hireNamed(NAMED_ROLE[d.id],d.id);return}if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
     case 'tskip':step(+b.dataset.n);toast(`Skipped ${b.dataset.n} minutes.`);break;
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
     case 'tclear':[...S.rec].forEach(id=>gone(S.P[id]));toast('Reception cleared.');break;
@@ -1178,11 +1183,11 @@ document.addEventListener('click',e=>{
     case 'dispense':{const ids=[...document.querySelectorAll('#chart .med input:checked')].map(i=>i.value);if(!ids.length){toast('Tick at least one medication.');return}dispense(p,ids);break}
     case 'paper':log(`${pname(p)} discharged with a paper prescription.`);gone(p);break;
     case 'unlock':{const d=DEPT[b.dataset.d];if(S.money<d.cost)return;S.money-=d.cost;S.depts[d.id].on=true;S.view=d.id;log(`${d.name} unlocked for ${fmt$(d.cost)}. Hire staff to open it.`,'good');toast(`${d.name} unlocked. Hire ${leadRole(d.id)[0].toLowerCase()} to start.`,'good');break}
-    case 'hire':{const d=b.dataset.d,r=b.dataset.r;const cost=r==='lead'?leadRole(d)[1]:NURSE_PAY;if(S.money<cost)return;S.money-=cost;if(d==='er'){hireNamed(r==='lead'?'doctor':'nurse');const nx=S.depts.er.staff[S.depts.er.staff.length-1];toast(`${staffName(nx)} joined the ER.`)}else if(NAMED_ROLE[d]){hireNamed(NAMED_ROLE[d],d);const nx=S.depts[d].staff[S.depts[d].staff.length-1];toast(`${staffName(nx)} joined ${DEPT[d].name}.`)}else S.depts[d][r]++;break}
+    case 'hire':{const d=b.dataset.d,r=b.dataset.r;const cost=r==='lead'?leadRole(d)[1]:NURSE_PAY;if(S.money<cost)return;S.money-=cost;if(isFlow(d)){hireNamed(r==='lead'?'doctor':'nurse',d);const nx=S.depts[d].staff[S.depts[d].staff.length-1];toast(`${staffName(nx)} joined ${DEPT[d].name}.`)}else if(NAMED_ROLE[d]){hireNamed(NAMED_ROLE[d],d);const nx=S.depts[d].staff[S.depts[d].staff.length-1];toast(`${staffName(nx)} joined ${DEPT[d].name}.`)}else S.depts[d][r]++;break}
     case 'erfire':{const x=staffById(b.dataset.s);if(!x)return;if(staffBusyWith(x.id)){toast(`${staffName(x)} is with a patient.`);return}const dd=x.d||'er',D=S.depts[dd];D.staff=D.staff.filter(y=>y.id!==x.id);syncStaff(dd);toast(`${staffName(x)} let go.`);break}
     case 'ermove':p&&erMove(p,b.dataset.to);break;
     case 'assign':p&&assignStaff(p,b.dataset.s);break;
-    case 'addroom':{const D=S.depts.er,k=b.dataset.k==='tri'?'triRooms':'dxRooms';if(S.money<ROOM_COST||D[k]>=ROOMMAX)return;S.money-=ROOM_COST;D[k]++;toast(`${b.dataset.k==='tri'?'Triage':'Diagnostic'} room added.`);break}
+    case 'addroom':{const D=S.depts[b.dataset.d||'er'],k=b.dataset.k==='tri'?'triRooms':'dxRooms';if(S.money<ROOM_COST||D[k]>=ROOMMAX)return;S.money-=ROOM_COST;D[k]++;toast(`${b.dataset.k==='tri'?'Triage':'Diagnostic'} room added.`);break}
     case 'fire':{const d=b.dataset.d,r=b.dataset.r;const D=S.depts[d];if(!D[r])return;if(r==='lead'&&busyCount(d)>=D.lead){toast('Everyone is mid-procedure. Wait until someone is free.');return}D[r]--;break}
     case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){S=null;try{localStorage.removeItem(KEY)}catch(e){}nb.textContent='New game';render();return}
       confirmNew=Date.now();nb.textContent='Tap again to reset';setTimeout(()=>{nb.textContent='New game'},3000);return}
@@ -1205,10 +1210,7 @@ function loop(){
 function start(data){
   S=(data&&data.state)||load();
   if(S&&![0,1,2,4].includes(S.speed))S.speed=1;
-  if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();const D=S.depts.er;
-    const old=[...D.q,...D.w].filter(id=>S.P[id]&&!S.P[id].stage);
-    if(old.length){D.q=D.q.filter(id=>!old.includes(id));D.w=D.w.filter(id=>!old.includes(id));
-      old.forEach(id=>{const p=S.P[id];p.inW=false;if(D.q.length<QMAX){D.q.push(id);p.stage='queue'}else{D.w.push(id);p.stage='wait';p.triaged=true}})}}
+  if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
   render();setInterval(loop,200);
 }
