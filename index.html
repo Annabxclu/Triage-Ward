@@ -121,6 +121,8 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .lockgrp summary .mono{margin-left:auto;letter-spacing:0;font-size:12px}
 .lockgrp summary:hover{background:var(--panel2);color:var(--ink)}
 .lockgrp .nav{margin-top:4px}
+.navgrp{margin-top:2px}
+.navgrp+.navgrp{margin-top:10px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 6px}
 .stats div{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 .stats b{font-family:var(--f-mono);color:var(--ink)}
@@ -421,7 +423,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .side>*{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .side>.dirwrap{order:0;position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px;box-shadow:0 4px 10px -8px rgba(0,0,0,.35)}
   .side>.dirwrap h3{display:none}
-  .side>.dirwrap .nav.open-list{display:none}
+  .side>.dirwrap .nav.open-list,.side>.dirwrap .navgrp{display:none}
   .wardpick{display:flex!important;align-items:center;gap:8px}
   .wardpick label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);font-family:var(--f-sign);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted)}
   .wardpick select{flex:1;min-width:0;font:inherit;font-size:16px;font-weight:600;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
@@ -1475,6 +1477,7 @@ let staffShut=new Set();try{staffShut=new Set(JSON.parse(localStorage.getItem('h
 const rgHead=(k,label,n)=>{const shut=staffShut.has(k);return `<button class="rgt" data-act="rgtoggle" data-k="${k}" aria-expanded="${!shut}" aria-label="${shut?'Show':'Hide'} ${label.toLowerCase()}"><span class="car" aria-hidden="true"></span><b>${label}</b><span class="rgn mono">${n}</span></button>`};
 const rgCls=k=>staffShut.has(k)?' shut':'';
 const staffN=(d,r)=>(S.depts[d].staff||[]).filter(x=>x.role===r).length;
+let officeOpen=true,openOpen=true;try{officeOpen=localStorage.getItem('hospital-office-open')!=='0';openOpen=localStorage.getItem('hospital-open-open')!=='0'}catch(e){}
 let lockedOpen=true;try{lockedOpen=localStorage.getItem('hospital-locked-open')!=='0'}catch(e){}
 let bookOpen=new Set();try{bookOpen=new Set(JSON.parse(localStorage.getItem('hospital-book-open')||'[]'))}catch(e){}
 const saveBookOpen=()=>{try{localStorage.setItem('hospital-book-open',JSON.stringify([...bookOpen]))}catch(e){}};
@@ -1821,7 +1824,7 @@ let testCond='';
 function needsAction(p){if(p.busy)return false;if(p.adm)return !!p.adm.ready||p.adm.surg==='wait';if(p.tq&&p.tq.length&&canRun(p))return false;return true}
 function renderSide(){
   const ae=document.activeElement;if(ae&&(ae.id==='testCond'||ae.id==='wardSel'))return;
-  const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>a.name.localeCompare(b.name)), off=DEPTS.filter(d=>!S.depts[d.id].on).sort((a,b)=>a.cost-b.cost||a.name.localeCompare(b.name));
+  const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>{const top=['er','pharm'],ia=top.indexOf(a.id),ib=top.indexOf(b.id);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return a.name.localeCompare(b.name)}), off=DEPTS.filter(d=>!S.depts[d.id].on).sort((a,b)=>a.cost-b.cost||a.name.localeCompare(b.name));
   const redIn=ids=>ids.filter(i=>S.P[i]&&cond(S.P[i]).p==='r'&&!S.P[i].treated).length;
   const colIn=ids=>ids.filter(i=>S.P[i]&&S.P[i].collapsed).length;
   const item=(id,code,name,count,hue,reds,cols)=>`<button class="navi ${S.view===id?'on':''}" data-act="view" data-v="${id}">
@@ -1834,16 +1837,17 @@ function renderSide(){
       <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
       <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear all queues</button><button class="btn sm" data-act="tevent">Random event</button><button class="btn sm" data-act="tevtend">End event</button></div>
       <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
-  let opts=`<option value="book" ${S.view==='book'?'selected':''}>Casebook (${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length})</option>`,needAll=0;
-  h+=`<div class="dirwrap"><h3>Floor directory</h3><div class="nav open-list">`;
+  let opts=`<optgroup label="Administration"><option value="book" ${S.view==='book'?'selected':''}>Casebook (${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length})</option>`,needAll=0;
+  h+=`<div class="dirwrap"><h3>Floor directory</h3><details class="lockgrp navgrp" id="officeGrp" ${officeOpen?'open':''}><summary><span>Administration</span><span class="mono">4</span></summary><div class="nav open-list">`;
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
   const ptAll=Object.values(S.P).filter(p=>p.loc!=='morgue'),ptIdle=ptAll.filter(p=>needsAction(p)).length;
   h+=item('pts','PTS','Patients',`<span class="${ptIdle?'idle':''}" title="${ptIdle} need${ptIdle===1?'s':''} you · ${ptAll.length} total">${ptIdle}/${ptAll.length}</span>`,200,0,0);opts+=`<option value="pts" ${S.view==='pts'?'selected':''}>Patients (${ptIdle}/${ptAll.length})</option>`;
   {const stN=allStaff().length+DEPTS.filter(d=>S.depts[d.id].on&&!hasNamedClin(d.id)&&!NAMED_ROLE[d.id]).reduce((n,d)=>n+(S.depts[d.id].lead||0),0);
    h+=item('staff','STAF','Staff',`<span title="${stN} on staff">${stN}</span>`,150,0,0);opts+=`<option value="staff" ${S.view==='staff'?'selected':''}>Staff (${stN})</option>`}
-  {const a=insOn().length;h+=item('ins','INS','Insurance',`<span title="${perDay()} patients per day">${a}/${INS.length}</span>`,45,0,0);opts+=`<option value="ins" ${S.view==='ins'?'selected':''}>Insurance (${a}/${INS.length})</option>`}
+  {const a=insOn().length;h+=item('ins','INS','Insurance',`<span title="${perDay()} patients per day">${a}/${INS.length}</span>`,45,0,0);opts+=`<option value="ins" ${S.view==='ins'?'selected':''}>Insurance (${a}/${INS.length})</option></optgroup><optgroup label="Open departments">`}
+  h+=`</div></details><details class="lockgrp navgrp" id="openGrp" ${openOpen?'open':''}><summary><span>Open departments</span><span class="mono">${on.length}</span></summary><div class="nav open-list">`;
   on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;needAll+=idle;{const r=redIn(all),cl=colIn(all);opts+=`<option value="${d.id}" ${S.view===d.id?'selected':''}>${cl?'⚠ ':r?'❗':''}${esc(d.name)} (${idle}/${all.length})</option>`}h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
-  h+=`</div><div class="wardpick"><label for="wardSel">Go to</label><select id="wardSel">${opts}${S.depts[S.view]&&!S.depts[S.view].on?`<option value="${S.view}" selected>${esc(DEPT[S.view].name)} (locked)</option>`:''}</select>${needAll?`<span class="wneed">${needAll} need${needAll===1?'s':''} you</span>`:''}</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
+  h+=`</div></details><div class="wardpick"><label for="wardSel">Go to</label><select id="wardSel">${opts}</optgroup>${S.depts[S.view]&&!S.depts[S.view].on?`<option value="${S.view}" selected>${esc(DEPT[S.view].name)} (locked)</option>`:''}</select>${needAll?`<span class="wneed">${needAll} need${needAll===1?'s':''} you</span>`:''}</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
     <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
@@ -2253,7 +2257,7 @@ function tickUI(){
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
     const ps=isICU(p.loc);el.textContent=el.classList.contains('tag')?`${ps?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10&&!ps);el.classList.toggle('paused',ps)});
   document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=`${isICU(p.loc)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
-  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${fmtDur(Math.ceil(p.adm.until-S.t))} left`});
+  document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=fmtCountdown(p.adm.until-S.t)});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=fmtCountdown(p.busy.end-S.t)});
 }
 function renderAlerts(){const el=document.getElementById('alerts');const ps=Object.values(S.P).filter(p=>p.collapsed);const ev=evtNow();
@@ -2323,7 +2327,7 @@ document.addEventListener('click',e=>{
   autoAssign();dirty=true;render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
-document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('medgrp')){if(e.target.open)medOpen.add(e.target.dataset.g);else medOpen.delete(e.target.dataset.g)}if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
+document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('medgrp')){if(e.target.open)medOpen.add(e.target.dataset.g);else medOpen.delete(e.target.dataset.g)}if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='officeGrp'){officeOpen=e.target.open;try{localStorage.setItem('hospital-office-open',officeOpen?'1':'0')}catch(err){}}if(e.target.id==='openGrp'){openOpen=e.target.open;try{localStorage.setItem('hospital-open-open',openOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
 document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value;if(e.target.id==='wardSel'){S.view=e.target.value;e.target.blur();render();save();scrollTo(0,0)}});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save();scrollTo(0,0)});
