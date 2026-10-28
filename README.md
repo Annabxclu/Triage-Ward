@@ -19,8 +19,8 @@ Insurance plans and patient names are fictional. Medical content is simplified f
 ## Running locally
 It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage. The game runs on game time: 1 game minute is 15 real seconds at 1× (a 10-minute CT head takes 2½ real minutes). It pauses while the page is closed.
 
-## Test mode
-Click **Test mode** in the top bar to open test tools in the sidebar: add money, unlock and staff every department, skip time, finish all running timers, clear reception, or add a patient with a specific condition. Click it again to hide the tools.
+## Settings and Sandbox mode
+Open **Settings** in the top bar to change the top bar color, turn the arrival sound on or off, start a **New game**, or switch on **Sandbox mode**, which adds tools to the sidebar: add money, unlock and staff every department, skip time, finish all running timers, clear reception, or add a patient with a specific condition. Click it again to hide the tools.
 
 ## Insurance
 

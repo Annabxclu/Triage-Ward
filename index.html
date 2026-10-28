@@ -78,7 +78,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .speed{display:flex;border:1px solid var(--band-line);border-radius:6px;overflow:hidden}
 .speed button{background:transparent;border:0;color:var(--band-muted);padding:6px 10px;font-family:var(--f-mono);font-size:13px}
 .speed button.on{background:var(--accent);color:var(--accent-ink)}
-.sndbtn{border:1px solid rgba(255,255,255,.18);background:transparent;color:var(--band-ink);border-radius:6px;width:32px;height:32px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none}
+.sndbtn{border:1px solid var(--band-line);background:transparent;color:var(--band-ink);border-radius:6px;width:32px;height:32px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none}
 .sndbtn:hover{border-color:var(--accent)}
 .sndbtn .mute{display:none}.sndbtn.off .mute{display:inline}.sndbtn.off .wave{display:none}.sndbtn.off{color:var(--band-muted)}
 .top .menu.off{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
@@ -113,7 +113,21 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .tline{display:flex;gap:5px}
 .wardpick{display:none}
 .tline select{flex:1;min-width:0;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:12px}
-#testBtn.on{background:var(--amber);color:var(--band);border-color:var(--amber)}
+.setdlg{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;width:min(520px,calc(100% - 32px));max-height:calc(100% - 48px);box-shadow:var(--shadow)}
+.setdlg::backdrop{background:rgba(8,16,19,.45)}
+.sethead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+.sethead h2{font-family:var(--f-sign);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:20px;margin:0}
+.setrow{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.setrow:last-child{border-bottom:0}.setrow>div{flex:1;min-width:0}.setrow.col{flex-direction:column;align-items:stretch}
+.setrow p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.tgl{width:46px;height:26px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);position:relative;flex:none;cursor:pointer;padding:0}
+.tgl span{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.tgl[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}.tgl[aria-checked="true"] span{left:22px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sw{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px 4px 4px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer}
+.sw span{width:20px;height:20px;border-radius:50%;background:var(--c);border:1px solid rgba(0,0,0,.15)}
+.sw.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.sw.custom{padding:3px 10px 3px 3px}.sw.custom span{width:auto;height:auto;border:0;background:none;border-radius:0}.sw.custom input{width:24px;height:24px;border:0;padding:0;background:none;border-radius:50%;cursor:pointer}
 .lockgrp summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;font-family:var(--f-sign);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .lockgrp summary::-webkit-details-marker{display:none}
 .lockgrp summary::before{content:"";width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
@@ -415,8 +429,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .meters .menu{grid-column:span 1;padding:6px 4px;font-size:13px;text-align:center;min-height:36px}
   .meters #pauseBtn{grid-column:1}
   .meters #intakeBtn{grid-column:2}
-  .meters #testBtn{grid-column:3}
-  .meters #newBtn{grid-column:4}
+  .meters #setBtn{grid-column:3 / span 2}
   /* sidebar pieces: ward switcher sticks to the top, extras move below the ward */
   .body,.body.has-chart{display:flex;flex-direction:column}
   .side{display:contents}
@@ -494,8 +507,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
       <button class="menu" data-act="intake" id="intakeBtn" title="Stop or start walk-in patients (clinic appointments still arrive)">Intake on</button>
-      <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
-      <button class="menu" data-act="newgame" id="newBtn">New game</button>
+      <button class="menu" data-act="settings" id="setBtn" aria-haspopup="dialog">Settings</button>
     </div>
   </header>
   <div id="alerts" class="alerts" hidden></div>
@@ -505,6 +517,14 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
     <aside class="chart" id="chart" hidden></aside>
   </div>
 </div>
+<dialog id="settingsDlg" class="setdlg" aria-labelledby="setTitle">
+  <div class="sethead"><h2 id="setTitle">Settings</h2><button class="btn sm" data-act="setclose" aria-label="Close settings">✕</button></div>
+  <section class="setrow"><div><b>Sandbox mode</b><p>Tools for trying things out: add money, unlock or staff every department, skip time, add any patient.</p></div><button class="tgl" data-act="testmode" id="testBtn" role="switch" aria-checked="false"><span></span></button></section>
+  <section class="setrow"><div><b>Arrival sound</b><p>Chime when a new patient arrives. Red patients get a quicker alert.</p></div><button class="tgl" data-act="sound" id="soundTgl" role="switch" aria-checked="true"><span></span></button></section>
+  <section class="setrow col"><div><b>Top bar color</b><p>Pick a color for the bar across the top of the screen.</p></div>
+    <div class="swatches" id="swatches"></div></section>
+  <section class="setrow"><div><b>New game</b><p>Close this hospital and start over. Clears your save and Casebook.</p></div><button class="btn danger" data-act="newgame" id="newBtn">New game</button></section>
+</dialog>
 <div id="toasts" aria-live="polite"></div>
 
 <script>
@@ -1567,6 +1587,17 @@ function apptTick(){const C=S.depts.clinic;if(!C||!C.on){S.appts=[];S.apptBlk=nu
 function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='clinic';
   const order=[c.d,...c.t,'er'].filter((d,i,a)=>a.indexOf(d)===i&&ok(d));for(const d of order)if(space(d,p||{triaged:false}))return d;return null}
 /* arrival sound: soft two-note chime, a quicker three-note alert for red patients */
+/* ---------- settings: top bar color ---------- */
+const BANDS=[['Midnight','#13232a'],['Navy','#14213d'],['Ocean','#0b4f6c'],['Forest','#1f3b2d'],['Plum','#3b1f3a'],['Crimson','#5a1a1f'],['Slate','#2f3640'],['Charcoal','#1c1c1c'],['Sand','#e7dcc8'],['Sky','#cfe3f0']];
+let bandColor=null;try{bandColor=localStorage.getItem('hospital-band')}catch(e){}
+function lum(hex){const n=parseInt(hex.slice(1),16),c=[n>>16&255,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]}
+function applyBand(){const r=document.documentElement.style;if(!bandColor){['--band','--band-ink','--band-muted','--band-line'].forEach(k=>r.removeProperty(k));return}
+  const light=lum(bandColor)>.4;r.setProperty('--band',bandColor);r.setProperty('--band-ink',light?'#13232a':'#f1f6f6');r.setProperty('--band-muted',light?'#4a5f64':'rgba(241,246,246,.68)');r.setProperty('--band-line',light?'rgba(19,35,42,.25)':'rgba(255,255,255,.2)')}
+function swatchesHTML(){const cur=bandColor||'';return BANDS.map(([n,c])=>`<button class="sw ${cur===c||(!cur&&c==='#13232a')?'on':''}" data-act="band" data-c="${c}" style="--c:${c}" aria-label="${n}" title="${n}"><span></span>${n}</button>`).join('')+
+  `<label class="sw custom" title="Custom color"><input type="color" id="bandPick" value="${cur||'#13232a'}" aria-label="Custom top bar color"><span>Custom</span></label><button class="btn sm" data-act="band" data-c="">Reset</button>`}
+function settingsUI(){const d=document.getElementById('settingsDlg');if(!d)return;const t=document.getElementById('testBtn');if(t&&S)t.setAttribute('aria-checked',S.test?'true':'false');
+  const st=document.getElementById('soundTgl');if(st)st.setAttribute('aria-checked',soundOn?'true':'false');document.getElementById('swatches').innerHTML=swatchesHTML()}
+applyBand();
 let soundOn=true;try{soundOn=localStorage.getItem('hospital-sound')!=='0'}catch(e){}
 let actx=null,lastChime=0,chimeQ=null;
 function chime(pr){if(!soundOn)return;const now=performance.now();if(now-lastChime<400){if(pr==='r')chimeQ='r';return}lastChime=now;
@@ -1575,7 +1606,7 @@ function chime(pr){if(!soundOn)return;const now=performance.now();if(now-lastChi
     notes.forEach(([fq,dt])=>{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=fq;
       g.gain.setValueAtTime(0,t0+dt);g.gain.linearRampToValueAtTime(pr==='r'?.22:.16,t0+dt+.02);g.gain.exponentialRampToValueAtTime(.001,t0+dt+.35);
       o.connect(g).connect(actx.destination);o.start(t0+dt);o.stop(t0+dt+.4)})}catch(e){}}
-function soundUI(){const b=document.getElementById('soundBtn');if(!b)return;b.setAttribute('aria-pressed',soundOn?'true':'false');b.classList.toggle('off',!soundOn);
+function soundUI(){settingsUI&&document.getElementById('soundTgl')&&document.getElementById('soundTgl').setAttribute('aria-checked',soundOn?'true':'false');const b=document.getElementById('soundBtn');if(!b)return;b.setAttribute('aria-pressed',soundOn?'true':'false');b.classList.toggle('off',!soundOn);
   const l=soundOn?'Arrival sound on':'Arrival sound off';b.title=l;b.setAttribute('aria-label',l)}
 function arrive(force){
   const pool=CONDS.filter(c=>!c.appt&&c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>{const e=evtNow();return (c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)*(e&&e.set&&e.set.has(c.n)?8:1)}));const c=CONDS[ci];
@@ -1863,7 +1894,7 @@ function renderSide(){
     <span class="badge" style="--h:${hue}">${code}</span><span class="nm">${esc(name)}</span>${cols?`<span class="colct" title="Collapsed patients">⚠${cols}</span>`:''}${reds?`<span class="redct">${reds}!</span>`:''}<span class="ct">${count}</span></button>`;
   let h='';
   if(S.test){const groups={};CONDS.forEach((cc,i)=>{(groups[cc.d]=groups[cc.d]||[]).push([cc.n,i])});
-    h+=`<div class="testbox"><h3>Test tools</h3><div class="tgrid">
+    h+=`<div class="testbox"><h3>Sandbox tools</h3><div class="tgrid">
       <button class="btn sm" data-act="tmoney" data-n="10000">+$10,000</button><button class="btn sm" data-act="tmoney" data-n="100000">+$100,000</button>
       <button class="btn sm" data-act="tunlock">Unlock all</button><button class="btn sm" data-act="tstaff">Staff all depts</button>
       <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
@@ -2263,7 +2294,7 @@ function renderChart(){
 }
 function renderTop(){
   document.getElementById('hn').textContent=S.name;
-  document.getElementById('testBtn').classList.toggle('on',!!S.test);
+  {const t=document.getElementById('testBtn');if(t)t.setAttribute('aria-checked',S.test?'true':'false')}
   const ib=document.getElementById('intakeBtn');if(ib){ib.textContent=S.intakeOff?'Intake off':'Intake on';ib.classList.toggle('off',!!S.intakeOff);ib.setAttribute('aria-pressed',S.intakeOff?'false':'true')}
   const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
@@ -2298,6 +2329,8 @@ function render(){
 
 /* ================= EVENTS ================= */
 let confirmNew=0;
+document.addEventListener('input',e=>{if(e.target.id==='bandPick'){bandColor=e.target.value;try{localStorage.setItem('hospital-band',bandColor)}catch(err){}applyBand();document.querySelectorAll('.sw.on').forEach(x=>x.classList.remove('on'))}});
+document.addEventListener('click',e=>{const dl=document.getElementById('settingsDlg');if(e.target===dl){dl.close();return}});
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b||!S||b.disabled)return;const a=b.dataset.act;const p=S.pid&&S.P[S.pid];
   switch(a){
@@ -2306,7 +2339,10 @@ document.addEventListener('click',e=>{
     case 'close':S.pid=null;break;
     case 'addbed':{const d=b.dataset.d,D=S.depts[d];if(S.money<BED_COST||D.beds>=BEDMAX)return;S.money-=BED_COST;D.beds++;toast(`Recovery bed added to ${DEPT[d].name}.`);break}
     case 'discharge':p&&dischargeAdm(p);break;
-    case 'testmode':S.test=!S.test;if(S.test)log('Test mode turned on.','warn');break;
+    case 'testmode':S.test=!S.test;if(S.test)log('Sandbox mode turned on.','warn');settingsUI();break;
+    case 'settings':{const d=document.getElementById('settingsDlg');settingsUI();d.showModal();return}
+    case 'setclose':document.getElementById('settingsDlg').close();return;
+    case 'band':bandColor=b.dataset.c||null;try{if(bandColor)localStorage.setItem('hospital-band',bandColor);else localStorage.removeItem('hospital-band')}catch(e){}applyBand();settingsUI();return;
     case 'tmoney':S.money+=+b.dataset.n;toast(`Added ${fmt$(+b.dataset.n)}.`);break;
     case 'tunlock':DEPTS.forEach(d=>{S.depts[d.id].on=true});log('Test mode: every department unlocked.','warn');toast('Every department unlocked.');break;
     case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(hasNamedClin(d.id)){while(D.staff.filter(x=>x.role==='nurse').length<2)hireNamed('nurse',d.id);while(D.staff.filter(x=>x.role==='doctor').length<2)hireNamed('doctor',d.id);if(hasOR(d.id)){while(D.staff.filter(x=>x.role==='surgeon').length<1)hireNamed('surgeon',d.id);while(D.staff.filter(x=>x.role==='anes').length<1)hireNamed('anes',d.id);if(!D.orRooms)D.orRooms=1}return}if(NAMED_ROLE[d.id]){while((D.staff||[]).length<2)hireNamed(NAMED_ROLE[d.id],d.id);return}if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
@@ -2347,7 +2383,7 @@ document.addEventListener('click',e=>{
     case 'assign':p&&assignStaff(p,b.dataset.s);break;
     case 'addroom':{const D=S.depts[b.dataset.d||'er'],k=b.dataset.k==='tri'?'triRooms':'dxRooms';if(S.money<ROOM_COST||D[k]>=ROOMMAX)return;S.money-=ROOM_COST;D[k]++;toast(`${b.dataset.k==='tri'?'Triage':'Diagnostic'} room added.`);break}
     case 'fire':{const d=b.dataset.d,r=b.dataset.r;const D=S.depts[d];if(!D[r])return;if(r==='lead'&&busyCount(d)>=D.lead){toast('Everyone is mid-procedure. Wait until someone is free.');return}D[r]--;break}
-    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){S=null;BOOK={};bookV++;bookKey=null;try{localStorage.removeItem(KEY);localStorage.removeItem(BOOKKEY)}catch(e){}nb.textContent='New game';render();return}
+    case 'newgame':{const nb=document.getElementById('newBtn');if(Date.now()-confirmNew<3000){const dl=document.getElementById('settingsDlg');if(dl.open)dl.close();S=null;BOOK={};bookV++;bookKey=null;try{localStorage.removeItem(KEY);localStorage.removeItem(BOOKKEY)}catch(e){}nb.textContent='New game';render();return}
       confirmNew=Date.now();nb.textContent='Tap again to reset';setTimeout(()=>{nb.textContent='New game'},3000);return}
   }
   autoAssign();dirty=true;render();
