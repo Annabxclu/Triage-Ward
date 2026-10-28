@@ -106,6 +106,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .tgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .tgrid .btn{padding:5px 6px;font-size:12px}
 .tline{display:flex;gap:5px}
+.wardpick{display:none}
 .tline select{flex:1;min-width:0;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:12px}
 #testBtn.on{background:var(--amber);color:var(--band);border-color:var(--amber)}
 .lockgrp summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;font-family:var(--f-sign);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -358,7 +359,11 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .side>*{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .side>.dirwrap{order:0;position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px;box-shadow:0 4px 10px -8px rgba(0,0,0,.35)}
   .side>.dirwrap h3{display:none}
-  .side>.dirwrap .nav.open-list{padding-bottom:2px;scrollbar-width:none}
+  .side>.dirwrap .nav.open-list{display:none}
+  .wardpick{display:flex!important;align-items:center;gap:8px}
+  .wardpick label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);font-family:var(--f-sign);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted)}
+  .wardpick select{flex:1;min-width:0;font:inherit;font-size:16px;font-weight:600;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+  .wardpick .wneed{flex:none;font-size:12px;font-weight:700;color:var(--amber);background:var(--amber-bg);border-radius:999px;padding:4px 8px}
   .side>.dirwrap .nav.open-list::-webkit-scrollbar{display:none}
   .side>.dirwrap .navi{padding:6px 10px;gap:6px;font-size:14px;min-height:38px}
   .side>.dirwrap .navi .badge{display:none}
@@ -1478,7 +1483,7 @@ let testCond='';
 /* a patient needs the player when nothing is running for them */
 function needsAction(p){if(p.busy)return false;if(p.adm)return !!p.adm.ready;if(p.tq&&p.tq.length&&canRun(p))return false;return true}
 function renderSide(){
-  const ae=document.activeElement;if(ae&&ae.id==='testCond')return;
+  const ae=document.activeElement;if(ae&&(ae.id==='testCond'||ae.id==='wardSel'))return;
   const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>{const top=['er','pharm'],ia=top.indexOf(a.id),ib=top.indexOf(b.id);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return a.name.localeCompare(b.name)}), off=DEPTS.filter(d=>!S.depts[d.id].on);
   const redIn=ids=>ids.filter(i=>S.P[i]&&cond(S.P[i]).p==='r'&&!S.P[i].treated).length;
   const colIn=ids=>ids.filter(i=>S.P[i]&&S.P[i].collapsed).length;
@@ -1492,10 +1497,11 @@ function renderSide(){
       <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
       <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear all queues</button><button class="btn sm" data-act="tevent">Random event</button><button class="btn sm" data-act="tevtend">End event</button></div>
       <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
+  let opts=`<option value="book" ${S.view==='book'?'selected':''}>Casebook (${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length})</option>`,needAll=0;
   h+=`<div class="dirwrap"><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
-  on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
-  h+=`</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
+  on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;needAll+=idle;{const r=redIn(all),cl=colIn(all);opts+=`<option value="${d.id}" ${S.view===d.id?'selected':''}>${cl?'⚠ ':r?'❗':''}${esc(d.name)} (${idle}/${all.length})</option>`}h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
+  h+=`</div><div class="wardpick"><label for="wardSel">Go to</label><select id="wardSel">${opts}${S.depts[S.view]&&!S.depts[S.view].on?`<option value="${S.view}" selected>${esc(DEPT[S.view].name)} (locked)</option>`:''}</select>${needAll?`<span class="wneed">${needAll} need${needAll===1?'s':''} you</span>`:''}</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
     <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
@@ -1893,7 +1899,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
 document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('medgrp')){if(e.target.open)medOpen.add(e.target.dataset.g);else medOpen.delete(e.target.dataset.g)}if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
-document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value});
+document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value;if(e.target.id==='wardSel'){S.view=e.target.value;e.target.blur();render();save();scrollTo(0,0)}});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save();scrollTo(0,0)});
 
