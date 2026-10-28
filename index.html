@@ -208,6 +208,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .sthead+.strow{border-top:0}
 .strole{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
 .strole .rgn{font-size:12px;color:var(--muted);background:var(--panel2);border-radius:999px;padding:1px 7px;font-weight:400}
+.sec.rxpin{position:sticky;top:var(--chh,0px);z-index:1;background:var(--panel);padding-top:10px;padding-bottom:10px;box-shadow:0 6px 8px -8px rgba(0,0,0,.35)}
 .bookbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .bookbar input{flex:1;min-width:0;max-width:480px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -2034,7 +2035,7 @@ function chartHTML(p){
   }
 
   if(L==='pharm'){
-    h+=`<div class="sec"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}<div class="rxlist"><b>Medication to dispense:</b><ul>${c.rx.map(r=>`<li>${esc(MEDS[r].name)} <span class="mt">${MEDS[r].type}</span></li>`).join('')}</ul></div></div></div>
+    h+=`<div class="sec rxpin"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}<div class="rxlist"><b>Medication to dispense:</b><ul>${c.rx.map(r=>`<li>${esc(MEDS[r].name)} <span class="mt">${MEDS[r].type}</span></li>`).join('')}</ul></div></div></div>
      <div class="sec"><h3>Dispense medication <span>pick what they need</span></h3><div class="meds">`;
     ['OTC','Rx'].forEach(t=>{const n=Object.values(MEDS).filter(m=>m.type===t).length;h+=`<details class="medgrp" data-g="${t}" ${medOpen.has(t)?'open':''}><summary>${t==='OTC'?'Over the counter':'Prescription'}<span class="mono">${n} items</span></summary><div class="meds">`;
       Object.values(MEDS).filter(m=>m.type===t).sort((a,b)=>a.name.localeCompare(b.name)).forEach(m=>{
@@ -2143,7 +2144,7 @@ function renderChart(){
   if(chartKey===p.id&&ae&&el.contains(ae)&&ae.tagName==='SELECT'){chartPending=true;return}
   const keep={};el.querySelectorAll('select,input[type=checkbox]').forEach(i=>keep[i.id]=i.type==='checkbox'?i.checked:i.value);
   if(chartKey!==p.id)medOpen.clear();
-  const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;if(chartKey!==p.id)el.scrollTop=0;
+  const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;{const hd=el.querySelector('.ch-head');if(hd)el.style.setProperty('--chh',hd.offsetHeight+'px')}if(chartKey!==p.id)el.scrollTop=0;
   if(chartKey===p.id){for(const k in keep){const i=document.getElementById(k);if(!i)continue;
     if(i.type==='checkbox')i.checked=keep[k];else if([...i.options].some(o=>o.value===keep[k]&&!o.disabled))i.value=keep[k]}el.scrollTop=sc}
   chartKey=p.id;chartPending=false;
