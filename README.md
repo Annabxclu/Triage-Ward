@@ -27,3 +27,6 @@ Urgent patients left waiting can **collapse**: a red alert bar names the patient
 
 ## Saving and pausing
 The game saves itself to your browser every few seconds. Switching tabs, minimizing, locking your screen or closing the page pauses the hospital; it resumes when you come back. Saves live in each browser separately, so the Claude version and the GitHub version keep separate hospitals.
+
+## Random events
+Every 1½–4 hours something happens: a **bus fire**, **highway pile-up**, **ice storm**, **heat wave**, **flu season surge**, **food poisoning outbreak**, **pollen storm**, **music festival** or **chemical plant leak** sends extra patients with matching conditions; **staff illness** takes people off shift; a **power outage** knocks out Radiology; a **quiet holiday** slows arrivals; or a **charity donation** arrives. Events only pick conditions your open departments can treat. An amber banner shows what's happening and how long it lasts.

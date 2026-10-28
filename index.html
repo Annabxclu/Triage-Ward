@@ -201,9 +201,14 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .person .xs{border:0;background:transparent;color:var(--muted);width:20px;height:20px;border-radius:50%;padding:0;line-height:1}
 .person .xs:hover{background:var(--panel2);color:var(--red)}
 .flowtxt{margin:0;font-size:13px}
-.alerts{display:grid;gap:4px;background:var(--red-bg);border-bottom:1px solid var(--red);padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.alert{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink)}
+.alerts{display:grid}
+.alert{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink);background:var(--red-bg);border-bottom:1px solid var(--red);padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .alert b{color:var(--red)}
+.alert.evt{background:var(--amber-bg);border-bottom-color:var(--amber);flex-wrap:wrap}
+.alert.evt b{color:var(--amber)}
+.alert .evleft{margin-left:auto;color:var(--amber);font-weight:600;white-space:nowrap}
+.person.sick{opacity:.55}
+.person.sick .pdot{background:var(--muted)}
 .alert .btn{margin-left:auto}
 .adot{width:9px;height:9px;border-radius:50%;background:var(--red);flex:none;animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
@@ -1060,10 +1065,45 @@ const pname=p=>`${p.first} ${p.last}`;
 const cond=p=>CONDS[p.c];
 
 /* send a new arrival to the ward for their condition, else another open ward that treats it, else the ER */
+/* ---------- random hospital events ---------- */
+const EVENTS=[
+ {id:'busfire',name:'Bus fire',desc:'Burn and smoke-inhalation patients are pouring in.',dur:60,rate:.25,conds:['Partial-thickness burns','Full-thickness hand burn','Carbon monoxide poisoning','Simple laceration','Chest contusion']},
+ {id:'pileup',name:'Highway pile-up',desc:'A multi-car crash: fractures, head injuries and internal bleeding.',dur:75,rate:.5,conds:['Tibial shaft fracture','Simple femur fracture','Open femur fracture','Rib fractures','Concussion','Cerebral contusion','Liver laceration','Blunt splenic rupture','Lung contusion','Blunt cardiac injury','Flail chest','Arm contusion','Leg contusion','Chest contusion','Simple laceration','Tension pneumothorax','Hemothorax','Kidney contusion','Clavicle fracture','Distal radius fracture']},
+ {id:'ice',name:'Ice storm',desc:'Icy sidewalks and space heaters: falls and carbon monoxide.',dur:90,rate:.3,conds:['Hip fracture','Distal radius fracture','Ankle fracture','Ankle sprain','Concussion','Subdural hematoma','Carbon monoxide poisoning','Simple humerus fracture','Rib fractures']},
+ {id:'heat',name:'Heat wave',desc:'Record temperatures: dehydration, kidney stones and heat rash.',dur:120,rate:.2,conds:['Gastroenteritis','Kidney stone','Miliaria (heat rash)','Acute kidney injury, hyperkalemia','Panic attack']},
+ {id:'flu',name:'Flu season surge',desc:'Respiratory viruses are spreading through the city.',dur:180,rate:.3,conds:['Influenza','Influenza B','Community-acquired pneumonia','Acute bronchitis','Common cold','COVID-19','RSV bronchiolitis','Asthma exacerbation','COPD exacerbation','Bronchopneumonia']},
+ {id:'food',name:'Food poisoning outbreak',desc:'A wedding buffet went wrong.',dur:60,rate:.4,conds:['Salmonellosis','Campylobacteriosis','Gastroenteritis','Norovirus']},
+ {id:'pollen',name:'Pollen storm',desc:'Thunderstorm asthma and allergies across town.',dur:120,rate:.2,conds:['Hay fever','Asthma exacerbation','Allergic conjunctivitis','Anaphylaxis']},
+ {id:'festival',name:'Music festival',desc:'A crowded weekend festival nearby.',dur:120,rate:.3,conds:['Opioid overdose','Panic attack','Simple laceration','Ankle sprain','Gastroenteritis','Concussion','Chlamydia']},
+ {id:'chem',name:'Chemical plant leak',desc:'A gas release at an industrial site.',dur:60,rate:.3,conds:['Chlorine gas poisoning','Carbon monoxide poisoning','Partial-thickness burns','Asthma exacerbation']},
+ {id:'quiet',name:'Quiet holiday',desc:'The city is celebrating. Fewer patients for a while.',dur:120,rate:-.4},
+ {id:'sick',name:'Staff illness',desc:'Some of your staff called in sick.',dur:120,kind:'sick'},
+ {id:'power',name:'Power outage',desc:'Radiology scanners are offline until power is restored.',dur:45,kind:'power'},
+ {id:'donor',name:'Charity donation',desc:'A grateful family donated $15,000 to the hospital.',dur:10,kind:'donor'}];
+EVENTS.forEach(e=>{if(e.conds)e.set=new Set(e.conds)});
+const evtNow=()=>S&&S.evt&&S.t<S.evt.end?EVENTS.find(e=>e.id===S.evt.id):null;
+const evtActive=id=>{const e=evtNow();return !!e&&e.id===id};
+const isSick=x=>!!(x&&x.sick&&S&&x.sick>S.t);
+function evtEligible(e){
+  if(e.conds){const open=CONDS.filter(c=>e.set.has(c.n)&&c.t.some(t=>S.depts[t]&&S.depts[t].on));return open.length>=2}
+  if(e.kind==='power')return !!(S.depts.rad&&S.depts.rad.on);
+  if(e.kind==='sick')return allStaff().filter(x=>x.role==='nurse'||x.role==='doctor').length>=3;
+  return true}
+function startEvent(e){
+  S.evt={id:e.id,start:S.t,end:S.t+e.dur};
+  if(e.kind==='donor'){S.money+=15000;S.st.revenue+=15000}
+  let extra='';
+  if(e.kind==='sick'){const pool=allStaff().filter(x=>(x.role==='nurse'||x.role==='doctor')&&!staffBusyWith(x.id)&&!isSick(x));
+    const out=pool.sort(()=>Math.random()-.5).slice(0,2);out.forEach(x=>{x.sick=S.t+e.dur});extra=out.length?` Out sick: ${out.map(staffName).join(', ')}.`:''}
+  log(`Event: ${e.name}. ${e.desc}${extra}`,'warn');toast(`📣 ${e.name}: ${e.desc}`,'warn');dirty=true}
+function evtTick(){
+  if(S.evt&&S.t>=S.evt.end){const e=EVENTS.find(x=>x.id===S.evt.id);S.evt=null;S.evtNext=S.t+rnd(90,240);if(e&&e.kind!=='donor'){log(`${e.name} is over.`,'good');toast(`${e.name} is over.`,'good')}dirty=true}
+  if(S.evtNext==null)S.evtNext=S.t+rnd(60,150);
+  if(!S.evt&&S.t>=S.evtNext){const ok=EVENTS.filter(evtEligible);if(ok.length)startEvent(pick(ok));else S.evtNext=S.t+60}}
 function routeDept(c,p){const ok=d=>S.depts[d]&&S.depts[d].on&&DEPT[d].kind==='clinic';
   const order=[c.d,...c.t,'er'].filter((d,i,a)=>a.indexOf(d)===i&&ok(d));for(const d of order)if(space(d,p||{triaged:false}))return d;return null}
 function arrive(force){
-  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>(c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)));const c=CONDS[ci];
+  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>{const e=evtNow();return (c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)*(e&&e.set&&e.set.has(c.n)?8:1)}));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=c.cos?{n:'Self-pay (cosmetic)',c:1}:age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
   const id='p'+(S.seq++);
@@ -1102,9 +1142,9 @@ function erInit(){DEPTS.filter(d=>d.kind==='clinic').forEach(dd=>{const d=dd.id,
 const staffName=x=>x?`${ROLE_TITLE[x.role]} ${x.last}`:'';
 function staffById(id){return allStaff().find(x=>x.id===id)}
 function staffBusyWith(id){for(const k in S.P){const p=S.P[k];if(p.nurse===id||p.doc===id||p.tech===id)return p}return null}
-function freeStaff(role,d='er'){return (S.depts[d].staff||[]).filter(x=>x.role===role&&!staffBusyWith(x.id))}
+function freeStaff(role,d='er'){return (S.depts[d].staff||[]).filter(x=>x.role===role&&!staffBusyWith(x.id)&&!isSick(x))}
 function erExamOK(p,x){if(isICU(p.loc))return p.doc?true:NURSE_EX.includes(x);if(!isFlow(p.loc))return true;if(p.stage==='tri')return NURSE_EX.includes(x);return p.stage==='dx'}
-function canRun(p){if(NAMED_ROLE[p.loc])return !!p.tech;if(isICU(p.loc))return p.stage==='icu'&&!!(p.doc||p.nurse);if(isFlow(p.loc))return (p.stage==='tri'&&!!p.nurse)||(p.stage==='dx'&&!!p.doc);return canWork(p.loc)}
+function canRun(p){if(p.loc==='rad'&&evtActive('power'))return false;if(NAMED_ROLE[p.loc])return !!p.tech;if(isICU(p.loc))return p.stage==='icu'&&!!(p.doc||p.nurse);if(isFlow(p.loc))return (p.stage==='tri'&&!!p.nurse)||(p.stage==='dx'&&!!p.doc);return canWork(p.loc)}
 function canTreat(p){if(isICU(p.loc))return p.stage==='icu'&&!!p.doc;if(isFlow(p.loc))return p.stage==='dx'&&!!p.doc;return canWork(p.loc)}
 function erMove(p,to){if(!isFlow(p.loc)||p.busy)return;const D=S.depts[p.loc];
   if(to==='tri'&&D.tri.length>=D.triRooms){toast('No triage room is free.');return}
@@ -1116,7 +1156,7 @@ function erMove(p,to){if(!isFlow(p.loc)||p.busy)return;const D=S.depts[p.loc];
   p.nurse=null;if(to!=='dx')p.doc=null;p.tq=[];
   ({queue:D.q,tri:D.tri,wait:D.w,dx:D.dxr})[to].push(p.id);p.stage=to;p.v++;dirty=true}
 function ordersHere(p,d){return (p.orders||[]).filter(o=>examHere(o,d)&&!(o in p.res))}
-function assignStaff(p,sid){const x=staffById(sid);if(!x||staffBusyWith(sid))return;
+function assignStaff(p,sid){const x=staffById(sid);if(!x||staffBusyWith(sid)||isSick(x))return;
   if(NAMED_ROLE[p.loc]&&NAMED_ROLE[p.loc]===x.role){if(p.tech||p.inW)return;p.tech=sid;const here=ordersHere(p,p.loc);
     p.tq=[...new Set([...(p.tq||[]),...here])];p.techAuto=here.length>0;p.v++;dirty=true;tryNext(p);return}
   if(isICU(p.loc)&&p.stage==='icu'&&(x.d||'er')==='icu'){if(x.role==='nurse'&&!p.nurse)p.nurse=sid;else if(x.role==='doctor'&&!p.doc)p.doc=sid;else return;p.v++;dirty=true;tryNext(p);return}
@@ -1253,7 +1293,8 @@ function autoAssign(){if(!S)return;const ps=Object.values(S.P).sort((a,b)=>'ryg'
     else if(NAMED_ROLE[p.loc]&&!p.tech&&!p.inW&&ordersHere(p,p.loc).length){const x=take(NAMED_ROLE[p.loc],p.loc);if(x)assignStaff(p,x.id)}}}
 function step(dt){
   S.t+=dt;
-  while(S.t>=S.next){arrive();S.next+=ARRIVAL}
+  evtTick();
+  while(S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
   if(today!==S.payDate){S.payDate=today;let pay=0;DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;pay+=D.lead*leadRole(d.id)[1]+(d.kind==='clinic'?D.nurse*NURSE_PAY:0)});
     S.money-=pay;log(`Midnight payroll: ${fmt$(pay)} in salaries.`,'warn');toast(`Payroll paid: ${fmt$(pay)}`,'warn');dirty=true}
@@ -1294,7 +1335,7 @@ function renderSide(){
       <button class="btn sm" data-act="tmoney" data-n="10000">+$10,000</button><button class="btn sm" data-act="tmoney" data-n="100000">+$100,000</button>
       <button class="btn sm" data-act="tunlock">Unlock all</button><button class="btn sm" data-act="tstaff">Staff all depts</button>
       <button class="btn sm" data-act="tskip" data-n="10">Skip 10 minutes</button><button class="btn sm" data-act="tskip" data-n="30">Skip 30 minutes</button>
-      <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear all queues</button></div>
+      <button class="btn sm" data-act="tfinish">Finish all timers</button><button class="btn sm" data-act="tclear">Clear all queues</button><button class="btn sm" data-act="tevent">Random event</button><button class="btn sm" data-act="tevtend">End event</button></div>
       <label for="testCond">Add a patient</label><div class="tline"><select id="testCond"><option value="">Random</option>${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}" ${String(i)===testCond?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn sm primary" data-act="tspawn">Add</button></div></div>`}
   h+=`<div><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
@@ -1365,12 +1406,12 @@ function staffRowHTML(v){const d=DEPT[v],D=S.depts[v],role=leadRole(v);
          <div class="staff"><span class="role">${role[0]}</span><button data-act="fire" data-d="${v}" data-r="lead" ${D.lead?'':'disabled'} aria-label="Let one go">−</button><b>${D.lead}</b><button data-act="hire" data-d="${v}" data-r="lead" ${S.money<role[1]?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(role[1])}/day</span></div>
          ${d.kind==='clinic'?`<div class="staff"><span class="role">Nurses</span><button data-act="fire" data-d="${v}" data-r="nurse" ${D.nurse?'':'disabled'} aria-label="Let one go">−</button><b>${D.nurse}</b><button data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(NURSE_PAY)}/day · −10% test time each</span></div>`:''}</div></div>`}
 function techRoster(v){const D=S.depts[v],role=NAMED_ROLE[v],pay=leadRole(v)[1];
-  const ppl=(D.staff||[]).map(x=>{const w=staffBusyWith(x.id);return `<div class="person ${w?'busy':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff. Hire one to run tests.</span>';
+  const ppl=(D.staff||[]).map(x=>{const w=staffBusyWith(x.id);return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff. Hire one to run tests.</span>';
   return `<div class="roster"><div class="rgrp"><div class="rh"><b>${ROLE_TITLE[role]}s</b><span class="sal">${fmt$(pay)}/day each</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<pay?'disabled':''}>Hire ${ROLE_TITLE[role].toLowerCase()}</button></div><div class="people">${ppl}</div>
     <div class="tests"><span>Open a patient and assign a ${ROLE_TITLE[role].toLowerCase()}. They run the doctor's orders, then free up.</span></div></div></div>`}
 function icuView(){const d=DEPT.icu,D=S.depts.icu,used=D.dxr.length+D.adm.length;
   const roster=role=>(D.staff||[]).filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
-    return `<div class="person ${w?'busy':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
+    return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Critical and collapsed patients go straight into a bed. Their clock stops while they're here.</p></div></div></div>
    <div class="roster">
@@ -1392,7 +1433,7 @@ function icuFlowHTML(p){const D=S.depts.icu;const b=p.busy?'disabled':'';
   </div></div>`}
 function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   const roster=role=>D.staff.filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
-    return `<div class="person ${w?'busy':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
+    return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
   const addRoom=(k,n)=>`<button class="btn sm" data-act="addroom" data-d="${v}" data-k="${k}" ${n>=ROOMMAX||S.money<ROOM_COST?'disabled':''}>${n>=ROOMMAX?'Max rooms':`Add room · ${fmt$(ROOM_COST)}`}</button>`;
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Queue, then a triage room with a nurse, then the waiting room or a diagnostic room with a doctor.</p></div></div></div>
@@ -1614,6 +1655,7 @@ function tickUI(){
   document.getElementById('clock').textContent=S.speed?new Date().toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}):'Paused';
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
+  document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
   document.getElementById('nextArr').textContent=fmtDur(Math.ceil(S.next-S.t));
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
@@ -1625,9 +1667,9 @@ function tickUI(){
   document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=`${fmtDur(Math.ceil(p.adm.until-S.t))} left`});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=`${fmtDur(Math.ceil(p.busy.end-S.t))} left`});
 }
-function renderAlerts(){const el=document.getElementById('alerts');const ps=Object.values(S.P).filter(p=>p.collapsed);
-  if(!ps.length){el.hidden=true;el.innerHTML='';return}el.hidden=false;
-  el.innerHTML=ps.map(p=>{const where=p.loc==='rec'?'Reception':`${DEPT[p.loc].name}${p.stage?' · '+(stageName(p)||''):''}`;
+function renderAlerts(){const el=document.getElementById('alerts');const ps=Object.values(S.P).filter(p=>p.collapsed);const ev=evtNow();
+  if(!ps.length&&!ev){el.hidden=true;el.innerHTML='';return}el.hidden=false;
+  el.innerHTML=(ev?`<div class="alert evt"><span class="edot">📣</span><span><b>${esc(ev.name)}</b> · ${esc(ev.desc)}${ev.rate?` <span class="mono">(${ev.rate>0?'+':''}${Math.round(ev.rate*100)}% patients)</span>`:''}</span><span class="mono evleft" data-evt="1"></span></div>`:'')+ps.map(p=>{const where=p.loc==='rec'?'Reception':`${DEPT[p.loc].name}${p.stage?' · '+(stageName(p)||''):''}`;
     return `<div class="alert"><span class="adot"></span><span><b>${esc(pname(p))}</b> collapsed in ${esc(where)} · <span class="mono" data-dlt="${p.id}"></span> left</span><button class="btn sm" data-act="goto" data-pid="${p.id}">Open</button></div>`}).join('')}
 function render(){
   if(!S){document.getElementById('app').hidden=true;document.getElementById('setup').hidden=false;return}
@@ -1651,6 +1693,8 @@ document.addEventListener('click',e=>{
     case 'tstaff':DEPTS.forEach(d=>{const D=S.depts[d.id];if(!D.on)return;if(hasNamedClin(d.id)){while(D.staff.filter(x=>x.role==='nurse').length<2)hireNamed('nurse',d.id);while(D.staff.filter(x=>x.role==='doctor').length<2)hireNamed('doctor',d.id);return}if(NAMED_ROLE[d.id]){while((D.staff||[]).length<2)hireNamed(NAMED_ROLE[d.id],d.id);return}if(D.lead<2)D.lead=2;if(DEPT[d.id].kind==='clinic'&&D.nurse<2)D.nurse=2});toast('Open departments now have at least 2 staff.');break;
     case 'tskip':step(+b.dataset.n);toast(`Skipped ${b.dataset.n} minutes.`);break;
     case 'tfinish':Object.values(S.P).forEach(q=>{if(q.busy)q.busy.end=S.t;if(q.adm&&!q.adm.ready)q.adm.until=S.t});step(0.01);toast('All running tests, treatments and stays finished.');break;
+    case 'tevent':{const ok=EVENTS.filter(evtEligible);if(!ok.length){toast('No event fits your open departments yet.');return}startEvent(pick(ok));break}
+    case 'tevtend':{if(S.evt)S.evt.end=S.t;evtTick();break}
     case 'tclear':DEPTS.forEach(d=>{const D=S.depts[d.id];[...(D.q||[])].forEach(id=>S.P[id]&&gone(S.P[id]))});toast('All queues cleared.');break;
     case 'tspawn':{const v=document.getElementById('testCond').value;const before=S.seq;arrive(v===''?null:+v);const np=S.P['p'+before];if(np){S.view=np.loc;S.pid=np.id;toast(`${np.first} arrived in ${DEPT[np.loc].name}.`)}else toast('No open department has room for that patient.');break}
     case 'bookall':{if(b.dataset.v==='1')DEPTS.forEach(d=>bookOpen.add(d.id));else bookOpen.clear();saveBookOpen();bookKey=null;renderMain();return}
