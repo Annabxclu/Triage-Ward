@@ -452,6 +452,19 @@ X('nasal','Nasal endoscopy',10,280,['ent'],'Normal nasal passages');
 X('oral','Oral cavity exam',5,90,['omfs','ent'],'Healthy teeth and gums');
 X('lp','Lumbar puncture',25,800,['neuro','id'],'Clear CSF, normal cell count');
 X('eeg','EEG',40,900,['neuro'],'Normal brain activity');
+X('smear','Malaria blood smear',20,90,['lab'],'No parasites seen');
+X('stool','Stool studies (culture, toxin, PCR, O&P)',45,180,['lab'],'No pathogens found');
+X('hep','Hepatitis panel',30,140,['lab'],'All negative');
+X('tickser','Tick-borne disease panel',45,280,['lab'],'All negative');
+X('afb','Sputum AFB smear and TB PCR',40,180,['lab'],'No acid-fast bacilli');
+X('vpcr','Respiratory pathogen PCR panel',30,240,['lab'],'No pathogens detected');
+X('arbo','Mosquito-borne virus panel',45,320,['lab'],'All negative');
+X('vhf','High-risk virus PCR (isolation lab)',60,900,['lab'],'Not detected');
+X('cult','Wound and lymph node culture',45,220,['lab'],'No growth');
+X('zoo','Animal-exposure serology panel',45,260,['lab'],'All negative');
+X('urineag','Urine antigen tests',15,90,['lab'],'Negative');
+X('fungal','Fungal antigen and serology',40,220,['lab'],'Negative');
+X('rabies','Rabies testing (saliva PCR, skin biopsy)',60,600,['lab'],'Negative');
 X('dermoscopy','Dermatoscopy',5,120,['derm'],'No suspicious pattern');
 X('koh','Skin scraping (KOH / mites)',10,80,['derm','sh'],'No fungus or mites');
 X('skinbx','Skin biopsy',20,600,['derm'],'Benign skin');
@@ -479,7 +492,13 @@ M('risp','Risperidone','Rx',40); M('lith','Lithium carbonate','Rx',30); M('levet
 M('nimo','Nimodipine','Rx',210); M('dexa','Dexamethasone','Rx',20); M('tams','Tamsulosin','Rx',25);
 M('gaba','Gabapentin','Rx',22); M('enox','Enoxaparin','Rx',180); M('ssd','Silver sulfadiazine cream','Rx',40);
 M('szc','Sodium zirconium cyclosilicate','Rx',280);
-M('triam','Triamcinolone cream','Rx',25); M('clobet','Clobetasol ointment','Rx',45); M('permeth','Permethrin 5% cream','Rx',35);
+M('triam','Triamcinolone cream','Rx',25);
+M('artemether','Artemether-lumefantrine','Rx',120); M('vancopo','Oral vancomycin','Rx',180); M('ripe','TB 4-drug regimen (RIPE)','Rx',220);
+M('tenofovir','Tenofovir','Rx',300); M('fluconazole','Fluconazole','Rx',40); M('pyrimeth','Pyrimethamine-sulfadiazine','Rx',750);
+M('genta','Gentamicin injection','Rx',60); M('benznid','Benznidazole','Rx',400); M('atovaq','Atovaquone','Rx',450);
+M('ribavirin','Ribavirin','Rx',350); M('paxlovid','Nirmatrelvir-ritonavir','Rx',1400); M('meropenem','Meropenem','Rx',260);
+M('nitazox','Nitazoxanide','Rx',300); M('ebolamab','Ebola monoclonal antibody','Rx',5000); M('rig','Rabies immune globulin','Rx',2800);
+ M('clobet','Clobetasol ointment','Rx',45); M('permeth','Permethrin 5% cream','Rx',35);
 
 const CONDS = [];
 function C(n,d,t,p,a,sx,f,tx,rx){CONDS.push({n,d,t,p,a,sx,F:f.map(s=>{const pres=s[0]==='*';const b=pres?s.slice(1):s;const i=b.indexOf(':');return{x:b.slice(0,i),l:b.slice(i+1),pres}}),tx,rx})}
@@ -557,12 +576,80 @@ C("Psoriasis flare","derm",["derm"],"g",[20,60],0,["*hx:Itchy patches on elbows 
 C("Scabies","derm",["derm","sh","er"],"g",[5,70],0,["*hx:Intense itching, worse at night","*hx:Roommate is itchy too","phys:Tiny burrows between the fingers","koh:Mites and eggs on scraping"],["Household treatment plan",15,200],["permeth","cetir"]);
 C("Stevens-Johnson syndrome","derm",["derm","icu"],"r",[18,70],0,["*hx:Started a new seizure medicine 2 weeks ago","*phys:Painful dusky rash, skin peeling off","phys:Sores in the mouth and eyes","vitals:Fever 102.2°F, heart rate 120","skinbx:Full-thickness epidermal necrosis"],["Stop the drug, burn-unit style wound care",180,26000],["morph"]);
 
+const CORE_N = CONDS.length;
+/* Infectious Diseases expansion */
+C("Acute hepatitis A","id",["id","im"],"y",[10,60],0,["*hx:Yellow eyes and dark urine","*hx:Nauseous and exhausted for a week","hx:Ate raw shellfish on a trip abroad","phys:Jaundice, tender enlarged liver","lft:ALT 2,400, bilirubin 6.1","hep:Hepatitis A IgM positive"],["Supportive care and hydration",30,400],["ondan"]);
+C("Acute hepatitis B","id",["id","im"],"y",[18,55],0,["*hx:Yellow skin and itching","*hx:Achy joints and tiredness","hx:New sexual partners, never vaccinated","phys:Jaundice, tender liver","lft:ALT 1,800, bilirubin 4.3","hep:HBsAg and hepatitis B core IgM positive"],["Monitoring and antiviral start",30,900],["tenofovir"]);
+C("Acute hepatitis E","id",["id","im"],"y",[18,60],0,["*hx:Fever, then nausea and yellow eyes","*hx:Dark urine","hx:Drank untreated water in South Asia","phys:Jaundice","lft:ALT 1,500, bilirubin 5.0","hep:Hepatitis E IgM positive"],["Supportive care",30,400],["ondan"]);
+C("African tick bite fever","id",["id"],"g",[18,70],0,["*hx:Fever and headache after a safari","phys:Black scab (eschar) on the lower leg","phys:Swollen lymph nodes near the bite","phys:Faint rash","tickser:Rickettsia africae PCR positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Chagas disease (American trypanosomiasis)","id",["id","cardio"],"g",[30,65],0,["*hx:Palpitations and getting breathless","*hx:Grew up in rural Bolivia in a mud-walled house","ecg:Right bundle branch block","cxr:Enlarged heart","zoo:Trypanosoma cruzi antibodies positive on two tests"],["Antiparasitic treatment plan",30,900],["benznid"]);
+C("Anaplasmosis","id",["id","im"],"y",[30,80],0,["*hx:High fever, chills and muscle aches","hx:Pulled a tick off a week ago in Wisconsin","cbc:Low white count and platelets","lft:Mildly raised liver enzymes","tickser:Anaplasma PCR positive"],["Oral antibiotic start",20,400],["doxy"]);
+C("Babesiosis","id",["id","icu"],"y",[50,85],0,["*hx:Fever and drenching sweats","*hx:Dark urine","hx:Hiking on Nantucket, tick bite","cbc:Hemolytic anemia, low platelets","smear:Ring forms and 'Maltese cross' shapes in red cells","tickser:Babesia PCR positive"],["Antiparasitic combination therapy",30,2500],["atovaq","azith"]);
+C("Boutonneuse fever","id",["id"],"g",[18,70],0,["*hx:Fever after a trip to southern France with the dog","phys:Black eschar at a tick bite","phys:Spotted rash including palms and soles","tickser:Rickettsia conorii antibodies positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Brucellosis","id",["id","im"],"y",[20,70],0,["*hx:Fevers that come and go for weeks","*hx:Night sweats and low back pain","hx:Drinks unpasteurized goat milk","palp:Enlarged liver and spleen","bcx:Slow-growing Brucella","zoo:Brucella antibodies positive"],["Combination antibiotic start",30,1800],["doxy","genta"]);
+C("Bubonic plague","id",["id","icu"],"r",[10,70],0,["*hx:Sudden fever and a very painful lump in the groin","hx:Handled a dead prairie dog in New Mexico","phys:Hot, tender swollen lymph node (bubo)","vitals:Fever 103.1°F, heart rate 118","cult:Yersinia pestis from node aspirate"],["Isolation and IV antibiotics",60,9000],["genta","doxy"]);
+C("C. difficile infection","id",["id","im"],"y",[50,90],0,["*hx:Watery diarrhea 8 times a day","hx:Finished a course of clindamycin 2 weeks ago","palp:Lower belly tenderness","cbc:White count 18,000","stool:C. difficile toxin positive"],["Contact isolation and oral antibiotic",20,600],["vancopo"]);
+C("Cat-scratch disease","id",["id"],"g",[5,40],0,["*hx:Swollen, tender lump in the armpit","hx:New kitten scratched her arm 2 weeks ago","phys:Small bump at the scratch site","vitals:Fever 100.6°F","cult:Bartonella henselae antibodies positive"],["Oral antibiotic start",15,250],["azith"]);
+C("Chikungunya","id",["id"],"g",[15,75],0,["*hx:Fever and severe pain in hands and feet","hx:Just back from the Caribbean","phys:Swollen wrists and ankles, rash","arbo:Chikungunya PCR positive"],["Supportive care",15,250],["acet"]);
+C("Cholera","id",["id","icu"],"r",[5,70],0,["*hx:Huge amounts of 'rice-water' diarrhea","hx:Recently in a flood-hit area of Haiti","phys:Sunken eyes, very dry mouth","vitals:BP 82/48, heart rate 130","bmp:Low potassium, acidosis","stool:Vibrio cholerae on culture"],["Aggressive IV and oral rehydration",120,5000],["ors","doxy"]);
+C("Colorado tick fever","id",["id"],"g",[15,70],0,["*hx:Fever that went away and came back","hx:Camping in the Rocky Mountains, tick bite","cbc:Low white count","tickser:Colorado tick fever virus PCR positive"],["Supportive care",15,250],["acet"]);
+C("COVID-19","id",["id","im","icu"],"y",[40,85],0,["*hx:Fever, cough, lost sense of smell","*hx:Short of breath","spo2:SpO₂ 93%","cxr:Patchy opacities in both lungs","flu:COVID-19 antigen positive","vpcr:SARS-CoV-2 PCR positive"],["Oxygen and antiviral start",30,1500],["paxlovid","acet"]);
+C("Dengue fever","id",["id","im"],"y",[10,60],0,["*hx:High fever and pain behind the eyes","*hx:Severe muscle and bone pain","hx:Back from Thailand 5 days ago","phys:Fine rash, positive tourniquet test","cbc:Platelets 45,000","arbo:Dengue NS1 antigen positive"],["IV fluids and monitoring",60,2500],["acet"]);
+C("Ebola virus disease","id",["id","icu"],"r",[20,60],0,["*hx:Fever, vomiting and bleeding gums","hx:Health worker back from an Ebola outbreak","phys:Bruising and oozing from needle sites","vitals:Fever 103.3°F, BP 86/50","lft:Very high liver enzymes","vhf:Ebola virus PCR positive"],["Strict isolation, antibody therapy, intensive support",180,60000],["ebolamab"]);
+C("Ehrlichiosis","id",["id","im"],"y",[30,80],0,["*hx:Fever, headache, muscle aches","hx:Lone star tick bite in Missouri","cbc:Low white count and platelets","lft:Raised liver enzymes","tickser:Ehrlichia PCR positive"],["Oral antibiotic start",20,400],["doxy"]);
+C("Flinders Island spotted fever","id",["id"],"g",[18,70],0,["*hx:Fever and rash after visiting Tasmania","phys:Eschar at a tick bite","phys:Spotty rash on the body","tickser:Rickettsia honei antibodies positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("H5N1 bird flu","id",["id","icu"],"r",[18,65],0,["*hx:High fever and worsening cough","hx:Works on a poultry farm with sick birds","spo2:SpO₂ 86%","cxr:Rapidly spreading pneumonia in both lungs","flu:Influenza A positive","vpcr:Avian influenza H5N1 PCR positive"],["Isolation, oxygen, antivirals",120,15000],["osel"]);
+C("Hantavirus pulmonary syndrome","id",["icu","id"],"r",[18,65],0,["*hx:Fever and aches, now very short of breath","hx:Cleaned out a mouse-infested cabin","spo2:SpO₂ 84%","cbc:Low platelets, high hematocrit","cxr:Fluid in both lungs","vhf:Hantavirus antibodies positive"],["ICU oxygen and circulatory support",120,22000],["acet"]);
+C("Japanese spotted fever","id",["id"],"g",[30,80],0,["*hx:Fever and rash after hiking in Japan","phys:Eschar at a tick bite","phys:Red spots on the arms and legs","tickser:Rickettsia japonica PCR positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Lassa fever","id",["id","icu"],"r",[18,60],0,["*hx:Fever, sore throat, chest pain","hx:Returned from rural Sierra Leone","phys:Puffy face and neck","lft:Very high AST","vhf:Lassa virus PCR positive"],["Isolation and antiviral therapy",120,30000],["ribavirin"]);
+C("Legionnaires' disease","id",["id","im","icu"],"y",[50,85],0,["*hx:High fever, cough and diarrhea","hx:Stayed at a hotel with a hot tub last week","vitals:Fever 104.0°F with a slow pulse","bmp:Sodium 128 (low)","cxr:Lobar pneumonia","urineag:Legionella urine antigen positive"],["IV antibiotics",60,4500],["azith"]);
+C("Leptospirosis","id",["id","im"],"y",[18,60],0,["*hx:Fever, headache, sore calves","hx:Went white-water rafting after heavy rain","phys:Red eyes without discharge","bmp:Creatinine raised","lft:Raised bilirubin","zoo:Leptospira antibodies positive"],["Antibiotic start",30,1800],["doxy"]);
+C("Lyme disease","id",["id"],"g",[8,75],0,["*hx:Expanding red ring rash on the thigh","*hx:Tired, low fever","hx:Hiking in Connecticut, tick attached for 2 days","phys:Bull's-eye rash wider than 5 cm","tickser:Borrelia antibodies positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Lymphocytic choriomeningitis","id",["id","neuro"],"y",[15,50],0,["*hx:Fever, then stiff neck and headache","hx:Has a pet hamster","neuro:Mild confusion, no focal deficit","lp:Clear CSF, many lymphocytes","zoo:LCMV antibodies positive"],["Supportive care",30,1500],["acet"]);
+C("Intestinal cryptosporidiosis","id",["id","im"],"g",[2,60],0,["*hx:Watery diarrhea for 10 days","hx:Swam in a public pool, toddler at daycare","bmp:Mildly low potassium","stool:Cryptosporidium antigen positive"],["Rehydration and antiparasitic",15,300],["nitazox","ors"]);
+C("Malaria","id",["id","icu","im"],"r",[5,70],0,["*hx:Cycles of fever, chills and sweating","hx:Back from Nigeria 2 weeks ago, no preventive pills","palp:Enlarged spleen","cbc:Anemia, low platelets","smear:Plasmodium falciparum, 4% of red cells infected"],["Start antimalarial treatment",30,2500],["artemether"]);
+C("Marburg virus disease","id",["id","icu"],"r",[20,60],0,["*hx:Fever, then a rash and bleeding","hx:Visited caves full of fruit bats in Uganda","phys:Bleeding from gums and needle sites","vitals:BP 84/50","vhf:Marburg virus PCR positive"],["Strict isolation and intensive support",180,55000],["acet"]);
+C("Melioidosis","id",["id","icu"],"y",[40,70],0,["*hx:Fever and cough for 2 weeks","hx:Rice farmer from northern Australia, has diabetes","gluc:Glucose 290 mg/dL","cxr:Upper-lobe consolidation with cavities","bcx:Burkholderia pseudomallei grown"],["IV antibiotics",60,8000],["meropenem"]);
+C("MERS","id",["id","icu"],"r",[30,75],0,["*hx:Fever, cough and shortness of breath","hx:Back from Saudi Arabia, visited a camel farm","spo2:SpO₂ 88%","cxr:Opacities in both lungs","vpcr:MERS-CoV PCR positive"],["Isolation and oxygen",120,18000],["acet"]);
+C("Mumps","id",["id"],"g",[5,25],0,["*hx:Swollen, painful cheeks on both sides","hx:Never vaccinated","phys:Swollen parotid glands in front of the ears","vitals:Fever 100.9°F","vpcr:Mumps virus PCR positive"],["Supportive care",15,200],["acet"]);
+C("Nipah virus infection","id",["id","icu","neuro"],"r",[10,60],0,["*hx:Fever, then confusion and drowsiness","hx:Drank raw date palm sap in Bangladesh","neuro:Confused, muscle twitching","mribrain:Many small bright spots in the brain","vhf:Nipah virus PCR positive"],["ICU support and isolation",180,40000],["acet"]);
+C("Norovirus","id",["id","er","im"],"g",[5,85],0,["*hx:Sudden vomiting and diarrhea","hx:Several people sick on the same cruise ship","phys:Mildly dry mouth","stool:Norovirus PCR positive"],["Oral rehydration",20,300],["ors","ondan"]);
+C("Pacific Coast tick fever","id",["id"],"g",[18,70],0,["*hx:Fever and headache after hiking","hx:Tick bite in Northern California","phys:Eschar at the bite with a swollen node nearby","tickser:Rickettsia philipii PCR positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Pertussis (whooping cough)","id",["id"],"y",[1,60],0,["*hx:Coughing fits that end in a 'whoop'","*hx:Vomits after coughing","hx:Not up to date on vaccines","cbc:Very high lymphocyte count","vpcr:Bordetella pertussis PCR positive"],["Antibiotic start and household contacts treated",15,300],["azith"]);
+C("Pneumonic plague","id",["icu","id"],"r",[15,70],0,["*hx:Sudden fever, coughing up bloody sputum","hx:Cared for a sick cat in Arizona","spo2:SpO₂ 85%","cxr:Rapidly spreading pneumonia","cult:Yersinia pestis in sputum"],["Isolation and IV antibiotics",120,20000],["genta","doxy"]);
+C("Inhalational anthrax","id",["icu","id"],"r",[25,70],0,["*hx:Flu-like illness, now severe shortness of breath","hx:Makes drums from imported animal hides","vitals:BP 84/52","cxr:Widened mediastinum, fluid around the lungs","ctchest:Bleeding, enlarged chest lymph nodes","bcx:Bacillus anthracis grown"],["IV antibiotics and antitoxin",180,45000],["cipro","meropenem"]);
+C("Q fever","id",["id","im"],"y",[20,65],0,["*hx:High fever and a pounding headache","hx:Helped with lambing on a sheep farm","cxr:Patchy pneumonia","lft:Raised liver enzymes","zoo:Coxiella burnetii antibodies positive"],["Oral antibiotic start",20,400],["doxy"]);
+C("Queensland tick typhus","id",["id"],"g",[18,70],0,["*hx:Fever and rash after bushwalking in Queensland","phys:Eschar at a tick bite","phys:Spotty rash with small blisters","tickser:Rickettsia australis antibodies positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Rabies","id",["icu","id"],"r",[10,70],0,["*hx:Agitated, afraid to drink water","*hx:Painful throat spasms","hx:Bitten by a bat 6 weeks ago, never treated","phys:Tingling at the old bite site","neuro:Agitation, drooling, confusion","rabies:Rabies virus RNA in saliva"],["ICU supportive care",180,30000],["morph"]);
+C("Rat-bite fever","id",["id","im"],"y",[5,40],0,["*hx:Fever, joint pain, rash on hands and feet","hx:Bitten by a pet rat a week ago","phys:Swollen, painful knees","bcx:Streptobacillus moniliformis grown"],["IV antibiotic then oral course",30,1800],["amox"]);
+C("Tick-borne relapsing fever","id",["id"],"y",[15,65],0,["*hx:Fever for 3 days, gone a week, now back","hx:Slept in a rustic cabin at Lake Tahoe","cbc:Low platelets","smear:Spiral bacteria (Borrelia) on blood smear"],["Antibiotic start and monitoring",20,600],["doxy"]);
+C("Pulmonary cryptococcosis","id",["id","im"],"g",[30,75],0,["*hx:Cough and chest pain for a month","hx:Kidney transplant, takes immune-suppressing drugs","cxr:Several lung nodules","ctchest:Multiple nodules, no cavities","fungal:Cryptococcal antigen positive"],["Antifungal treatment plan",20,500],["fluconazole"]);
+C("RSV bronchiolitis","id",["id","im"],"y",[1,3],0,["*hx:Wheezing and breathing fast","*hx:Runny nose for 3 days","hx:Cold going around the daycare","ausc:Wheezes and crackles","spo2:SpO₂ 91%","vpcr:RSV PCR positive"],["Oxygen, suction and fluids",60,2000],["acet"]);
+C("Rickettsialpox","id",["id"],"g",[18,60],0,["*hx:Fever and a blistering rash","hx:Mice in the apartment building","phys:Black eschar plus small blisters over the body","tickser:Rickettsia akari antibodies positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Rift Valley fever","id",["id","icu"],"y",[18,60],0,["*hx:Fever, headache and blurry vision","hx:Slaughtered sick livestock in Kenya","lft:Raised liver enzymes","arbo:Rift Valley fever virus PCR positive"],["Supportive care",60,6000],["acet"]);
+C("Rocky Mountain spotted fever","id",["id","icu"],"r",[5,70],0,["*hx:High fever and headache","*hx:Rash started on wrists and ankles, now spreading","hx:Tick bite in North Carolina","phys:Spotted rash on palms and soles","bmp:Sodium 129","cbc:Low platelets","tickser:Rickettsia rickettsii PCR positive"],["IV antibiotic",30,3000],["doxy"]);
+C("Rotavirus gastroenteritis","id",["id","er","im"],"g",[1,4],0,["*hx:Vomiting, then watery diarrhea","hx:Not vaccinated against rotavirus","phys:Dry mouth, cries without tears","stool:Rotavirus antigen positive"],["Rehydration",30,500],["ors","ondan"]);
+C("SARS","id",["id","icu"],"r",[25,75],0,["*hx:Fever, dry cough and shortness of breath","hx:Exposed to a SARS cluster abroad","spo2:SpO₂ 87%","cxr:Patchy opacities in both lungs","vpcr:SARS-CoV PCR positive"],["Isolation and oxygen",120,18000],["acet"]);
+C("Septicemic plague","id",["icu","id"],"r",[15,70],0,["*hx:Fever and belly pain, fingertips turning black","hx:Flea bites while camping in New Mexico","phys:Dark, dying skin on fingers, bruising","vitals:BP 76/40","bcx:Yersinia pestis in blood culture"],["ICU care and IV antibiotics",180,35000],["genta"]);
+C("Tibola","id",["id"],"g",[10,60],0,["*hx:Scab on the scalp and swollen neck after a tick bite","phys:Scalp eschar, tender neck lymph nodes","tickser:Rickettsia slovaca PCR positive"],["Oral antibiotic start",15,250],["doxy"]);
+C("Tick-borne encephalitis","id",["id","neuro"],"y",[15,70],0,["*hx:Fever, got better, now headache and confusion","hx:Hiking in Austria, tick bite","neuro:Confused, tremor","lp:Clear CSF, raised white cells","tickser:TBE virus IgM positive"],["Supportive neurological care",60,5000],["acet"]);
+C("Toxoplasmosis","id",["id","im"],"g",[18,60],0,["*hx:Swollen glands in the neck, tired","hx:Cleans the cat litter, likes rare meat","phys:Painless swollen neck lymph nodes","zoo:Toxoplasma IgM positive"],["Antiparasitic treatment plan",20,500],["pyrimeth"]);
+C("Pulmonary tuberculosis","id",["id","im"],"y",[18,75],0,["*hx:Cough for 3 months, coughing blood","*hx:Night sweats and weight loss","hx:Moved from the Philippines a year ago","cxr:Cavity in the upper lobe","afb:Acid-fast bacilli on sputum, TB PCR positive"],["Airborne isolation and 4-drug therapy",30,3000],["ripe"]);
+C("Tularemia","id",["id"],"y",[18,70],0,["*hx:Fever and an ulcer on the hand","hx:Skinned a wild rabbit last week","phys:Ulcer with a swollen armpit node","cult:Francisella tularensis antibodies positive"],["Antibiotic start",30,1800],["genta"]);
+C("Typhoid fever","id",["id","im"],"y",[5,60],0,["*hx:Fever rising each day for a week","*hx:Belly pain and constipation","hx:Visited family in Pakistan","vitals:Fever 103.5°F with a slow pulse","phys:Faint rose-colored spots on the belly","bcx:Salmonella Typhi grown"],["IV antibiotics",30,4000],["ceftri","azith"]);
+C("Murine typhus","id",["id"],"y",[15,70],0,["*hx:Fever, headache, rash on the trunk","hx:Works in a rat-infested warehouse in Texas","phys:Rash on chest and back, palms spared","tickser:Rickettsia typhi antibodies positive"],["Oral antibiotic start",20,400],["doxy"]);
+C("Valley fever (coccidioidomycosis)","id",["id","im"],"g",[18,75],0,["*hx:Cough, chest pain, tiredness","hx:Moved to Phoenix, caught in a dust storm","phys:Painful red lumps on the shins","cxr:Pneumonia with enlarged lymph nodes","fungal:Coccidioides antibodies positive"],["Antifungal treatment plan",20,500],["fluconazole"]);
+C("West Nile neuroinvasive disease","id",["id","neuro"],"y",[50,85],0,["*hx:Fever, headache, weak left arm","hx:Lots of mosquito bites over the summer","neuro:Floppy weakness of the left arm","lp:Clear CSF, raised white cells","arbo:West Nile virus IgM positive"],["Supportive neurological care",60,5000],["acet"]);
+C("Yellow fever","id",["id","icu"],"r",[18,60],0,["*hx:Fever, then yellow skin and bleeding","hx:Unvaccinated, trekked in the Amazon","phys:Jaundice, bleeding gums","lft:Very high liver enzymes","bmp:Creatinine raised","arbo:Yellow fever virus PCR positive"],["ICU support",120,25000],["panto"]);
+C("Zika fever","id",["id"],"g",[15,60],0,["*hx:Itchy rash, red eyes, mild fever","hx:Back from Brazil","phys:Red eyes without pus","arbo:Zika virus PCR positive"],["Supportive care and counseling",15,250],["acet"]);
+CONDS.forEach((c,i)=>{c.rare=i>=CORE_N});
 const LOS = {"Anaphylaxis":1,"Opioid overdose":1,"Concussion":1,"STEMI (heart attack)":3,"Atrial fibrillation with RVR":1,"Heart failure exacerbation":3,
  "Tibial shaft fracture":2,"Hip fracture":3,"Community-acquired pneumonia":2,"Diabetic ketoacidosis":2,"Upper GI bleed":2,"Bacterial meningitis":4,"Urosepsis":3,
  "Partial-thickness burns":5,"Gunshot wound to abdomen":4,"Spontaneous pneumothorax":2,"Acute appendicitis":1,"Acute cholecystitis":1,"Acute pancreatitis":3,
  "Acute psychosis (schizophrenia)":4,"Bipolar disorder, manic episode":4,"Lung cancer":2,"Acute myeloid leukemia":5,"Breast cancer":1,"Ectopic pregnancy":1,
  "Active labor":2,"Full-thickness hand burn":2,"Acute kidney injury, hyperkalemia":3,"Pyelonephritis":2,"Mandible fracture":1,"Ischemic stroke":3,
- "Subarachnoid hemorrhage":5,"New-onset epilepsy":1,"Pulmonary embolism":2,"Stevens-Johnson syndrome":4};
+ "Subarachnoid hemorrhage":5,"New-onset epilepsy":1,"Pulmonary embolism":2,"Stevens-Johnson syndrome":4,
+ "Acute hepatitis A":1,"Acute hepatitis B":1,"Acute hepatitis E":1,"Anaplasmosis":1,"Babesiosis":2,"Brucellosis":1,"Bubonic plague":4,"C. difficile infection":2,"Cholera":2,"COVID-19":2,"Dengue fever":2,"Ebola virus disease":5,"Ehrlichiosis":1,"H5N1 bird flu":4,"Hantavirus pulmonary syndrome":5,"Lassa fever":5,"Legionnaires' disease":3,"Leptospirosis":2,"Lymphocytic choriomeningitis":2,"Malaria":2,"Marburg virus disease":5,"Melioidosis":4,"MERS":4,"Nipah virus infection":5,"Pneumonic plague":5,"Inhalational anthrax":5,"Q fever":1,"Rabies":5,"Rat-bite fever":2,"Tick-borne relapsing fever":1,"Pulmonary cryptococcosis":1,"RSV bronchiolitis":2,"Rift Valley fever":2,"Rocky Mountain spotted fever":3,"SARS":4,"Septicemic plague":5,"Tick-borne encephalitis":4,"Pulmonary tuberculosis":3,"Tularemia":2,"Typhoid fever":3,"Murine typhus":1,"West Nile neuroinvasive disease":3,"Yellow fever":5};
 for(const k in LOS)if(!CONDS.some(c=>c.n===k))console.warn('LOS name not found',k);
 CONDS.forEach(c=>c.los=LOS[c.n]||0);
 /* ---------- likelihood of each diagnosis from what has been uncovered ---------- */
@@ -631,7 +718,7 @@ const cond=p=>CONDS[p.c];
 
 function arrive(force){
   if(S.rec.length>=RECMAX){S.st.away++;rep(-1);dirty=true;return}
-  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>c.p==='g'?3:c.p==='y'?2:1.4));const c=CONDS[ci];
+  const pool=CONDS.filter(c=>c.t.some(t=>S.depts[t]&&S.depts[t].on));const ci=force!=null?force:CONDS.indexOf(wpick(pool,c=>(c.p==='g'?3:c.p==='y'?2:1.4)*(c.rare?.35:1)));const c=CONDS[ci];
   const sex=c.sx||(Math.random()<.5?'f':'m');const age=rnd(c.a[0],c.a[1]);
   const ins=age>=65&&Math.random()<.65?SENIOR:wpick(INS,i=>i.w);
   const id='p'+(S.seq++);
