@@ -343,7 +343,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <ul>
         <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
         <li>A new patient arrives every 5 minutes and goes straight to the department for their condition.</li>
-        <li>Red patients have 30 minutes. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
+        <li>Red patients have 1 hour. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
         <li>Everything runs on real time: a 20-minute CT takes 20 real minutes. Closing the page pauses your hospital.</li>
       </ul>
@@ -405,7 +405,7 @@ const ROLE = {clinic:['Doctors',1400],lab:['Lab techs',600],rad:['Rad techs',900
 function leadRole(d){return ROLE[d==='lab'?'lab':d==='rad'?'rad':DEPT[d].kind==='pharm'?'pharm':DEPT[d].kind==='path'?'path':'clinic']}
 const NURSE_PAY = 450, TQMAX = 3;
 const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 5;
-const PAT = {r:30, y:150, g:300};
+const PAT = {r:60, y:90, g:120};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
 const MS_PER_MIN = 60000; // real time: one minute is one minute
 
@@ -1215,7 +1215,7 @@ function dispense(p,ids){
 }
 function die(p){
   S.st.died++;rep(-8);const c=cond(p);p.busy=null;
-  log(`${pname(p)} died waiting for care.`,'bad');toast(`${p.first} ${p.last} died. Urgent patients have 30 minutes.`,'bad');
+  log(`${pname(p)} died waiting for care.`,'bad');toast(`${p.first} ${p.last} died. Urgent patients have 1 hour.`,'bad');
   removeFrom(p);
   if(S.depts.path.on&&S.morgue.length<QMAX){p.loc='morgue';p.deadline=null;p.v++;S.morgue.push(p.id)}else{delete S.P[p.id];if(S.pid===p.id)S.pid=null}
   dirty=true;
