@@ -1505,8 +1505,7 @@ function chartHTML(p){
       Object.values(MEDS).filter(m=>m.type===t).sort((a,b)=>a.name.localeCompare(b.name)).forEach(m=>{
         h+=`<label class="med"><input type="checkbox" id="med-${m.id}" value="${m.id}"><span class="mn">${esc(m.name)}</span><span class="mt">${t}</span><span class="mp">${fmt$(m.price)}</span></label>`});h+=`</div></details>`});
     h+=`</div><div class="line" style="display:flex;gap:6px;flex-wrap:wrap">
-     <button class="btn primary" data-act="dispense" ${S.depts.pharm.lead?'':'disabled'}>Dispense</button>
-     <button class="btn" data-act="paper">Discharge with paper script</button></div>
+     <button class="btn primary" data-act="dispense" ${S.depts.pharm.lead?'':'disabled'}>Dispense</button></div>
      ${S.depts.pharm.lead?'':'<span class="empty-note">Hire a pharmacist to dispense.</span>'}</div>`;
     return h;
   }
