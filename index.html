@@ -77,6 +77,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .speed{display:flex;border:1px solid var(--band-line);border-radius:6px;overflow:hidden}
 .speed button{background:transparent;border:0;color:var(--band-muted);padding:6px 10px;font-family:var(--f-mono);font-size:13px}
 .speed button.on{background:var(--accent);color:var(--accent-ink)}
+.top .menu.off{background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
 .top .menu.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .top .menu{background:transparent;border:1px solid var(--band-line);color:var(--band-muted);border-radius:6px;padding:6px 10px;font-size:13px}
 
@@ -172,6 +173,22 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .log time{font-family:var(--f-mono);font-size:12px;color:var(--muted);flex:none}
 .log .bad{color:var(--red)} .log .good{color:var(--green)} .log .warn{color:var(--amber)}
 .case .cdesc{margin:6px 0 8px;font-size:13.5px;line-height:1.45;color:var(--ink);font-style:italic}
+.ptsum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.ptsum b{color:var(--ink)}.ptsum .idle b{color:var(--amber)}
+.ptlist{display:grid;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden;margin-top:14px}
+.ptrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,1.5fr) 150px;gap:12px;align-items:center;padding:10px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.ptrow:hover{background:var(--panel2)}.ptrow.sel{box-shadow:inset 3px 0 0 var(--accent);background:var(--panel2)}
+.ptrow.collapsed{box-shadow:inset 3px 0 0 var(--red)}
+.pthead{border-top:0;cursor:default;font-family:var(--f-sign);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted);background:var(--panel2)}
+.pthead:hover{background:var(--panel2)}
+.pc{display:flex;gap:8px;align-items:flex-start;min-width:0;flex-direction:column}
+.pc:first-child{flex-direction:row;align-items:center}
+.pc:first-child>span:last-child{display:flex;flex-direction:column;min-width:0}
+.psub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.pdept{font-weight:600}
+.pst{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px}
+.pst .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.pst.run{color:var(--accent)}.pst.rec{color:var(--muted)}.pst.idle{color:var(--amber)}
 .bookbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .bookbar input{flex:1;min-width:0;max-width:480px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -194,6 +211,12 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .rh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .rh .sal{color:var(--muted);font-size:12px;font-family:var(--f-mono)}
 .rh .btn{margin-left:auto}
+.rgt{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:2px 0;font:inherit;color:inherit;cursor:pointer;border-radius:4px}
+.rgt .car{width:0;height:0;border-left:6px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent;transform:rotate(90deg);transition:transform .15s}
+.rgrp.shut .rgt .car{transform:none}
+.rgt .rgn{font-size:12px;color:var(--muted);background:var(--panel2);border-radius:999px;padding:1px 7px}
+.rgt:hover b{color:var(--accent)}
+.rgrp.shut>:not(.rh){display:none}
 .people{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
 .person{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 9px;font-size:13px;background:var(--bg)}
 .person .pdot{width:7px;height:7px;border-radius:50%;background:var(--green)}
@@ -351,7 +374,8 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .meter small{font-size:9.5px;letter-spacing:.08em}
   .meter b{font-size:14px}
   .meters .menu{grid-column:span 1;padding:6px 4px;font-size:13px;text-align:center;min-height:36px}
-  .meters #pauseBtn{grid-column:1 / span 2}
+  .meters #pauseBtn{grid-column:1}
+  .meters #intakeBtn{grid-column:2}
   .meters #testBtn{grid-column:3}
   .meters #newBtn{grid-column:4}
   /* sidebar pieces: ward switcher sticks to the top, extras move below the ward */
@@ -376,6 +400,16 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .side>.totals{order:4;margin-top:12px}
   .side>.help{order:5;margin:12px 0 24px}
   .chart{z-index:40}
+  .ptrow{grid-template-columns:minmax(0,1fr) auto;gap:6px 10px}
+  .pthead{display:none}
+  .ptrow .pc:nth-child(2){grid-column:1 / -1;flex-direction:row;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .ptrow .pc:nth-child(2) .psub::before{content:'· '}
+  .ptrow .pc{gap:2px}
+  .ptrow .pc:nth-child(3){gap:8px}
+  .ptrow{padding:10px 12px}
+  .ptsum{gap:4px 12px;font-size:12px}
+  .ptrow .pc:nth-child(3){grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .ptrow .pc:nth-child(4){grid-row:1;grid-column:2;text-align:right;font-size:12px}
   .dtitle h1{font-size:24px}
   .dtitle p{font-size:13px}
   .slots{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -418,6 +452,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Patients</small><b id="ptCount">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
+      <button class="menu" data-act="intake" id="intakeBtn" title="Stop or start new patients arriving">Intake on</button>
       <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
     </div>
@@ -1350,6 +1385,10 @@ const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
 let BOOK={}; try{BOOK=JSON.parse(localStorage.getItem(BOOKKEY)||'{}')||{}}catch(e){BOOK={}}
 let ordersOpen=true;try{ordersOpen=localStorage.getItem('hospital-orders-open')!=='0'}catch(e){}
 const medOpen=new Set();
+let staffShut=new Set();try{staffShut=new Set(JSON.parse(localStorage.getItem('hospital-staff-shut')||'[]'))}catch(e){}
+const rgHead=(k,label,n)=>{const shut=staffShut.has(k);return `<button class="rgt" data-act="rgtoggle" data-k="${k}" aria-expanded="${!shut}" aria-label="${shut?'Show':'Hide'} ${label.toLowerCase()}"><span class="car" aria-hidden="true"></span><b>${label}</b><span class="rgn mono">${n}</span></button>`};
+const rgCls=k=>staffShut.has(k)?' shut':'';
+const staffN=(d,r)=>(S.depts[d].staff||[]).filter(x=>x.role===r).length;
 let lockedOpen=true;try{lockedOpen=localStorage.getItem('hospital-locked-open')!=='0'}catch(e){}
 let bookOpen=new Set();try{bookOpen=new Set(JSON.parse(localStorage.getItem('hospital-book-open')||'[]'))}catch(e){}
 const saveBookOpen=()=>{try{localStorage.setItem('hospital-book-open',JSON.stringify([...bookOpen]))}catch(e){}};
@@ -1621,8 +1660,10 @@ function autoAssign(){if(!S)return;const ps=Object.values(S.P).sort((a,b)=>'ryg'
     else if(NAMED_ROLE[p.loc]&&!p.tech&&!p.inW&&ordersHere(p,p.loc).length){const x=take(NAMED_ROLE[p.loc],p.loc);if(x)assignStaff(p,x.id)}}}
 function step(dt){
   S.t+=dt;
-  evtTick();apptTick();
-  while(S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
+  evtTick();
+  if(S.intakeOff){S.next+=dt;(S.appts||[]).forEach(a=>a.at+=dt)} /* intake off: arrival and appointment timers freeze */
+  else apptTick();
+  while(!S.intakeOff&&S.t>=S.next){arrive();const e=evtNow();S.next+=ARRIVAL/(1+(e&&e.rate?e.rate:0))}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
   if(today!==S.payDate){S.payDate=today}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
@@ -1667,7 +1708,8 @@ function renderSide(){
   let opts=`<option value="book" ${S.view==='book'?'selected':''}>Casebook (${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length})</option>`,needAll=0;
   h+=`<div class="dirwrap"><h3>Floor directory</h3><div class="nav open-list">`;
   h+=item('book','BOOK','Casebook',`${CONDS.filter(c=>BOOK[c.n]).length}/${CONDS.length}`,280,0);
-  on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;needAll+=idle;{const r=redIn(all),cl=colIn(all);opts+=`<option value="${d.id}" ${S.view===d.id?'selected':''}>${cl?'⚠ ':r?'❗':''}${esc(d.name)} (${idle}/${all.length})</option>`}h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all))});
+  const ptAll=Object.values(S.P).filter(p=>p.loc!=='morgue'),ptIdle=ptAll.filter(p=>needsAction(p)).length;
+  on.forEach(d=>{const D=S.depts[d.id];const all=d.kind==='path'?[...S.morgue]:[...D.q,...D.w,...(D.tri||[]),...(D.dxr||[]),...(D.adm||[])];const idle=all.filter(i=>S.P[i]&&needsAction(S.P[i])).length;needAll+=idle;{const r=redIn(all),cl=colIn(all);opts+=`<option value="${d.id}" ${S.view===d.id?'selected':''}>${cl?'⚠ ':r?'❗':''}${esc(d.name)} (${idle}/${all.length})</option>`}h+=item(d.id,d.code,d.name,`<span class="${idle?'idle':''}" title="${idle} need${idle===1?'s':''} you · ${all.length} total">${idle}/${all.length}</span>`,d.hue,redIn(all),colIn(all));if(d.id==='er'){h+=item('pts','PTS','Patients',`<span class="${ptIdle?'idle':''}" title="${ptIdle} need${ptIdle===1?'s':''} you · ${ptAll.length} total">${ptIdle}/${ptAll.length}</span>`,200,0,0);opts+=`<option value="pts" ${S.view==='pts'?'selected':''}>Patients (${ptIdle}/${ptAll.length})</option>`}});
   h+=`</div><div class="wardpick"><label for="wardSel">Go to</label><select id="wardSel">${opts}${S.depts[S.view]&&!S.depts[S.view].on?`<option value="${S.view}" selected>${esc(DEPT[S.view].name)} (locked)</option>`:''}</select>${needAll?`<span class="wneed">${needAll} need${needAll===1?'s':''} you</span>`:''}</div></div><details class="lockgrp" id="lockGrp" ${lockedOpen?'open':''}><summary><span>Locked departments</span><span class="mono">${off.length}</span></summary><div class="nav">`;
   off.forEach(d=>{h+=`<div class="navi locked ${S.view===d.id?'on':''}" style="cursor:default"><span class="badge">${d.code}</span>
     <button class="nm" style="border:0;background:none;padding:0;text-align:left" data-act="view" data-v="${d.id}">${esc(d.name)}</button>
@@ -1694,7 +1736,7 @@ function renderSide(){
 }
 let lastSideView=null;
 
-function card(p){
+function ptStatus(p){
   const c=cond(p);let st='Waiting',cls='';
   if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treating':p.busy.k==='stab'?'Stabilizing':'Autopsy';st=`${lbl} · <span class="mono" data-bzt="${p.id}"></span>`;cls='busy'}
   else if(p.loc==='morgue')st=p.autopsy?`Cause: ${esc(c.n)}`:'Awaiting autopsy';
@@ -1708,9 +1750,12 @@ function card(p){
   else if(p.loc==='rec')st='Needs triage';
   else{const n=Object.keys(p.res).length;st=n?`${n} test${n>1?'s':''} done`:'Ready for exam'}
   if(p.tq&&p.tq.length)st+=` · ${p.tq.length} queued`;
+  if(NAMED_ROLE[p.loc]&&!p.busy&&!p.inW)st=p.tech?`With ${esc(staffName(staffById(p.tech)))}`:`Needs a ${ROLE_TITLE[NAMED_ROLE[p.loc]].toLowerCase()}`;
+  return [st,cls]}
+function card(p){
+  const c=cond(p);let [st,cls]=ptStatus(p);
   let ordLine='';if(p.orders&&p.orders.length&&!p.adm&&!p.treated){const here=NAMED_ROLE[p.loc]?ordersHere(p,p.loc):[];
     ordLine=here.length?`<span class="ord">Ordered: ${esc(here.map(x=>EXAMS[x].name).join(', '))}</span>`:`<span class="ord">${p.orders.length} order${p.orders.length>1?'s':''} pending</span>`}
-  if(NAMED_ROLE[p.loc]&&!p.busy&&!p.inW)st=p.tech?`With ${esc(staffName(staffById(p.tech)))}`:`Needs a ${ROLE_TITLE[NAMED_ROLE[p.loc]].toLowerCase()}`;
   const showBar=p.busy||p.deadline||(p.adm&&!p.adm.ready);
   return `<button class="pt ${S.pid===p.id?'sel':''} ${p.collapsed?'collapsed':''}" data-act="pt" data-pid="${p.id}">${p.collapsed?'<span class="colbadge">⚠ Collapsed</span>':''}
    <span class="row1"><span class="tri ${c.p}"></span><span class="pname pr-${c.p}">${esc(pname(p))}</span>${p.vip?'<span class="vipb">★ VIP</span>':''}${p.appt!=null?'<span class="apptb">Appointment</span>':''}</span>
@@ -1739,7 +1784,7 @@ function staffRowHTML(v){const d=DEPT[v],D=S.depts[v],role=leadRole(v);
          ${d.kind==='clinic'?`<div class="staff"><span class="role">Nurses</span><button data-act="fire" data-d="${v}" data-r="nurse" ${D.nurse?'':'disabled'} aria-label="Let one go">−</button><b>${D.nurse}</b><button data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''} aria-label="Hire one">+</button><span class="sal">${fmt$(NURSE_PAY)} to hire · −10% test time each</span></div>`:''}</div></div>`}
 function techRoster(v){const D=S.depts[v],role=NAMED_ROLE[v],pay=leadRole(v)[1];
   const ppl=(D.staff||[]).map(x=>{const w=staffBusyWith(x.id);return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff. Hire one to run tests.</span>';
-  return `<div class="roster"><div class="rgrp"><div class="rh"><b>${ROLE_TITLE[role]}s</b><span class="sal">${fmt$(pay)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<pay?'disabled':''}>Hire ${ROLE_TITLE[role].toLowerCase()}</button></div><div class="people">${ppl}</div>
+  return `<div class="roster"><div class="rgrp${rgCls(v+':tech')}"><div class="rh">${rgHead(v+':tech',ROLE_TITLE[role]+'s',staffN(v,role))}<span class="sal">${fmt$(pay)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<pay?'disabled':''}>Hire ${ROLE_TITLE[role].toLowerCase()}</button></div><div class="people">${ppl}</div>
     <div class="tests"><span>Open a patient and assign a ${ROLE_TITLE[role].toLowerCase()}. They run the doctor's orders, then free up.</span></div></div></div>`}
 function icuView(){const d=DEPT.icu,D=S.depts.icu,used=D.dxr.length+D.adm.length;
   const roster=role=>(D.staff||[]).filter(x=>x.role===role).map(x=>{const w=staffBusyWith(x.id);
@@ -1747,9 +1792,9 @@ function icuView(){const d=DEPT.icu,D=S.depts.icu,used=D.dxr.length+D.adm.length
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Critical and collapsed patients go straight into a bed. Their clock stops while they're here.</p></div></div></div>
    <div class="roster">
-    <div class="rgrp"><div class="rh"><b>Nurses</b><span class="sal">${fmt$(NURSE_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="icu" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
+    <div class="rgrp${rgCls('icu'+':nurse')}"><div class="rh">${rgHead('icu'+':nurse','Nurses',staffN('icu','nurse'))}<span class="sal">${fmt$(NURSE_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="icu" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
      <div class="tests"><span>ICU nurses run nurse tests at the bedside.</span></div></div>
-    <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="icu" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
+    <div class="rgrp${rgCls('icu'+':doctor')}"><div class="rh">${rgHead('icu'+':doctor','Doctors',staffN('icu','doctor'))}<span class="sal">${fmt$(DOC_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="icu" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
      <div class="tests"><span>ICU doctors run every ICU test, diagnose and treat.</span></div></div>
    </div>
    <section class="zone"><div class="zone-h"><h2>ICU beds</h2><span class="cap">${used}/${D.beds} · ${fmt$(roomRate('icu'))} per ${fmtDur(DAY)} of recovery</span>
@@ -1773,9 +1818,9 @@ function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Queue, then a triage room with a nurse, then the waiting room or a diagnostic room with a doctor.</p></div></div></div>
    <div class="roster">
-    <div class="rgrp"><div class="rh"><b>Nurses</b><span class="sal">${fmt$(NURSE_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
+    <div class="rgrp${rgCls(v+':nurse')}"><div class="rh">${rgHead(v+':nurse','Nurses',staffN(v,'nurse'))}<span class="sal">${fmt$(NURSE_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
      <div class="tests"><span>Nurse tests:</span>${NURSE_EX.filter(x=>examHere(x,v)).map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div></div>
-    <div class="rgrp"><div class="rh"><b>Doctors</b><span class="sal">${fmt$(DOC_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
+    <div class="rgrp${rgCls(v+':doctor')}"><div class="rh">${rgHead(v+':doctor','Doctors',staffN(v,'doctor'))}<span class="sal">${fmt$(DOC_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
      <div class="tests"><span>Doctors run every test here, diagnose and treat.${er?'':` Tests here: ${esc(EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v)).map(x=>EXAMS[x].name).join(', ')||'basic exams only')}.`}</span></div></div>
    </div>
    ${v==='clinic'?apptZone():''}
@@ -1795,8 +1840,32 @@ function erFlowHTML(p){const D=S.depts[p.loc];let h='';const b=p.busy?'disabled'
   return h?`<div class="sec"><h3>${esc(DEPT[p.loc].name)} <span>${esc(stageName(p)||'')}</span></h3><div class="act">${h}</div></div>`:''}
 function logHTML(){return `<section class="logbox zone"><div class="zone-h"><h2>Shift log</h2></div><ul class="log">${S.log.slice(0,10).map(l=>`<li><time>${l.at?realTime(l.at):hhmm(l.t)}</time><span class="${l.kind}">${esc(l.msg)}</span></li>`).join('')}</ul></section>`}
 
+function ptArea(p){if(p.loc==='morgue')return 'Morgue';if(p.adm)return isObs(p.adm.d)?'Observation room':'Recovery bed';if(p.inW)return 'Waiting room';
+  if(isICU(p.loc)&&p.stage==='icu')return 'ICU bed';if(isFlow(p.loc)&&p.stage)return {queue:'Queue',tri:'Triage room',wait:'Waiting room',dx:'Diagnostic room'}[p.stage]||'';
+  if(DEPT[p.loc]&&DEPT[p.loc].kind==='pharm')return 'Pickup line';if(NAMED_ROLE[p.loc])return 'Testing';return ''}
+function patientsHTML(){
+  const ps=Object.values(S.P).filter(p=>p.loc!=='morgue').sort((a,b)=>(b.collapsed?1:0)-(a.collapsed?1:0)||'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||(a.deadline||1e9)-(b.deadline||1e9)||a.arr-b.arr);
+  const busyN=ps.filter(p=>p.busy).length,idleN=ps.filter(p=>!p.busy&&!(p.adm&&!p.adm.ready)).length;
+  let h=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:200">PTS</span><div><h1>Patients</h1>
+    <p>Everyone in the hospital right now, sickest first. Click a patient to open their chart.</p></div></div>
+    <div class="ptsum mono"><span><b>${ps.length}</b> in hospital</span><span><b>${busyN}</b> in a test or treatment</span><span class="idle"><b>${idleN}</b> idle</span></div></div>`;
+  if(!ps.length)return h+`<p class="empty-note">No patients in the hospital.</p>`;
+  h+=`<div class="ptlist" role="table" aria-label="All patients"><div class="ptrow pthead" role="row"><span role="columnheader">Patient</span><span role="columnheader">Department</span><span role="columnheader">Status</span><span role="columnheader">Time left</span></div>`;
+  ps.forEach(p=>{const c=cond(p);const [st]=ptStatus(p);const d=DEPT[p.loc];const rec=p.adm&&!p.adm.ready;
+    let stat;if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treatment: '+c.tx[0]:p.busy.k==='stab'?'Stabilizing':'Autopsy';
+      stat=`<span class="pst run"><span class="dot"></span>${esc(lbl)}</span><span class="psub mono" data-bzt="${p.id}"></span>`}
+    else if(rec)stat=`<span class="pst rec"><span class="dot"></span>${isObs(p.adm.d)?'In observation':'Recovering'}</span><span class="psub mono" data-admt="${p.id}"></span>`;
+    else stat=`<span class="pst idle"><span class="dot"></span>Idle</span><span class="psub">${st}</span>`;
+    h+=`<button class="ptrow ${S.pid===p.id?'sel':''} ${p.collapsed?'collapsed':''}" role="row" data-act="pt" data-pid="${p.id}">
+      <span class="pc" role="cell"><span class="tri ${c.p}"></span><span><b class="pname pr-${c.p}">${esc(pname(p))}</b>${p.collapsed?' <span class="colbadge">⚠ Collapsed</span>':''}${p.vip?' <span class="vipb">★ VIP</span>':''}<span class="psub">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span></span></span>
+      <span class="pc" role="cell"><span class="pdept">${d?esc(d.name):esc(p.loc)}</span><span class="psub">${esc(ptArea(p))}</span></span>
+      <span class="pc" role="cell">${stat}</span>
+      <span class="pc mono" role="cell">${p.deadline?`<span data-dlt="${p.id}"></span>`:'<span class="psub">—</span>'}</span></button>`});
+  return h+'</div>';
+}
 function renderMain(){
   const m=document.getElementById('main');let h='';const v=S.view;
+  if(v==='pts'){mainMode='pts';m.innerHTML=patientsHTML()+logHTML();return}
   if(v==='book'){
     if(mainMode!=='book'){m.innerHTML=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:280">BOOK</span><div><h1>Casebook</h1>
       <p>Every condition you confirm, misdiagnose or autopsy is recorded here with its findings, tests and standard prescription. It stays in this browser across new games.</p></div></div></div>
@@ -1985,6 +2054,7 @@ function renderChart(){
 function renderTop(){
   document.getElementById('hn').textContent=S.name;
   document.getElementById('testBtn').classList.toggle('on',!!S.test);
+  const ib=document.getElementById('intakeBtn');if(ib){ib.textContent=S.intakeOff?'Intake off':'Intake on';ib.classList.toggle('off',!!S.intakeOff);ib.setAttribute('aria-pressed',S.intakeOff?'false':'true')}
   const pb=document.getElementById('pauseBtn');pb.textContent=S.speed?'Pause':'Resume';pb.classList.toggle('on',!S.speed);
 }
 function tickUI(){
@@ -1993,7 +2063,7 @@ function tickUI(){
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
   document.querySelectorAll('[data-appt]').forEach(el=>{el.textContent=fmtCountdown(+el.dataset.appt-S.t)});
-  document.getElementById('nextArr').textContent=fmtCountdown(S.next-S.t);
+  document.getElementById('nextArr').textContent=S.intakeOff?'Intake off':fmtCountdown(S.next-S.t);
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
@@ -2039,6 +2109,8 @@ document.addEventListener('click',e=>{
     case 'rushicu':{if(!p)return;sendTo(p,'icu');if(p.loc==='icu'){toast(`${p.first} rushed to the ICU.`,'good');S.view='icu'}break}
     case 'goto':{const q=S.P[b.dataset.pid];if(!q)return;S.view=q.loc==='rec'?'rec':q.loc;S.pid=q.id;break}
     case 'pause':S.speed=S.speed?0:1;break;
+    case 'rgtoggle':{const k=b.dataset.k;if(staffShut.has(k))staffShut.delete(k);else staffShut.add(k);try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
+    case 'intake':S.intakeOff=!S.intakeOff;log(S.intakeOff?'Intake closed. No new patients will arrive until you turn it back on.':'Intake reopened. Patients are arriving again.',S.intakeOff?'warn':'good');toast(S.intakeOff?'Intake off: no new arrivals':'Intake on');break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
     case 'order':{if(!p)return;const x=b.dataset.x;p.orders=p.orders||[];const i=p.orders.indexOf(x);if(i>=0)p.orders.splice(i,1);else p.orders.push(x);p.v++;break}
     case 'treat':p&&startTreat(p);break;
