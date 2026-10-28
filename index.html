@@ -272,6 +272,9 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .med .mn{flex:1;min-width:0}
 .med .mt{font-size:10px;font-weight:700;letter-spacing:.06em;border-radius:3px;padding:1px 5px;border:1px solid var(--line);color:var(--muted)}
 .med .mp{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.rxlist{margin-top:6px}
+.rxlist ul{margin:4px 0 0;padding-left:18px;display:grid;gap:2px}
+.rxlist .mt{font-size:10px;font-weight:700;letter-spacing:.06em;border-radius:3px;padding:1px 5px;border:1px solid var(--line);color:var(--muted);margin-left:4px}
 .medgroup{font-size:12px;font-weight:700;color:var(--muted);margin-top:4px}
 .bill{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
 .bill b{font-family:var(--f-mono);color:var(--ink)}
@@ -1022,7 +1025,7 @@ function chartHTML(p){
   }
 
   if(L==='pharm'){
-    h+=`<div class="sec"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}</div></div>
+    h+=`<div class="sec"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}<div class="rxlist"><b>Medication to dispense:</b><ul>${c.rx.map(r=>`<li>${esc(MEDS[r].name)} <span class="mt">${MEDS[r].type}</span></li>`).join('')}</ul></div></div></div>
      <div class="sec"><h3>Dispense medication <span>pick what they need</span></h3><div class="meds">`;
     ['OTC','Rx'].forEach(t=>{h+=`<div class="medgroup">${t==='OTC'?'Over the counter':'Prescription'}</div>`;
       Object.values(MEDS).filter(m=>m.type===t).sort((a,b)=>a.name.localeCompare(b.name)).forEach(m=>{
