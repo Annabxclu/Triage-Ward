@@ -22,6 +22,10 @@ It's a single file. Open `index.html` in any modern browser. Progress saves in t
 ## Test mode
 Click **Test mode** in the top bar to open test tools in the sidebar: add money, unlock and staff every department, skip time, finish all running timers, clear reception, or add a patient with a specific condition. Click it again to hide the tools.
 
+## Surgery
+
+About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, craniotomy, fracture fixation and so on). Once a doctor confirms one, the chart shows **Admit for surgery** instead of Start treatment. Admitting moves the patient to a recovery bed in that department. When an **operating room** ($10,000, up to 4 per department; the ER starts with one) and a **surgeon** ($2,500 to hire) are both free, the surgeon operates automatically, then the patient recovers in the bed and is discharged as usual. Red patients stay critical until surgery starts.
+
 ## ICU and collapses
 Urgent patients left waiting can **collapse**: a red alert bar names the patient and where they are, the department gets a ⚠ badge, and they have 15 minutes. The **ICU** has no queue or rooms, just beds (10 to start, more for $5,000 each). A patient in an ICU bed is stable, so their clock stops (the only place it does) while ICU nurses and doctors work them up, and ICU-treated conditions recover in the same bed.
 
