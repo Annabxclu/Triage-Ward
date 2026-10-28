@@ -193,6 +193,13 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .warnnote{color:var(--amber)}
 .stcard{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:10px 14px;display:grid;gap:4px;flex:none}
 .stcard.empty{border-style:dashed}
+.stcard.shut>.strow{display:none}
+.stcard.shut .sthead{border-bottom:0;padding-bottom:0}
+.stcard .rgt .car{transform:rotate(90deg)}
+.stcard.shut .rgt .car{transform:none}
+.stlink{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 12px;font-size:14px}
+.stlink .sep{color:var(--muted)}
+.stlink .btn{margin-left:auto}
 .sthead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .stname{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;font-size:16px}
 .stname:hover b{color:var(--accent)}
@@ -1840,12 +1847,7 @@ function icuView(){const d=DEPT.icu,D=S.depts.icu,used=D.dxr.length+D.adm.length
     return `<div class="person ${w?'busy':''} ${isSick(x)?'sick':''}"><span class="pdot"></span><span class="pn">${esc(staffName(x))}</span><span class="ps">${w?`with ${esc(pname(w))}`:isSick(x)?'Out sick':'Free'}</span>${w?'':`<button class="xs" data-act="erfire" data-s="${x.id}" aria-label="Let ${esc(staffName(x))} go" title="Let go">×</button>`}</div>`}).join('')||'<span class="empty-note">Nobody on staff.</span>';
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Critical and collapsed patients go straight into a bed. Their clock stops while they're here.</p></div></div></div>
-   <div class="roster">
-    <div class="rgrp${rgCls('icu'+':nurse')}"><div class="rh">${rgHead('icu'+':nurse','Nurses',staffN('icu','nurse'))}<span class="sal">${fmt$(NURSE_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="icu" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
-     <div class="tests"><span>ICU nurses run nurse tests at the bedside.</span></div></div>
-    <div class="rgrp${rgCls('icu'+':doctor')}"><div class="rh">${rgHead('icu'+':doctor','Doctors',staffN('icu','doctor'))}<span class="sal">${fmt$(DOC_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="icu" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
-     <div class="tests"><span>ICU doctors run every ICU test, diagnose and treat.</span></div></div>
-   </div>
+   ${staffLink('icu')}
    <section class="zone"><div class="zone-h"><h2>ICU beds</h2><span class="cap">${used}/${D.beds} · ${fmt$(roomRate('icu'))} per ${fmtDur(DAY)} of recovery</span>
      <span class="note">Patients stay in the same bed through treatment and recovery.</span>
      <button class="btn sm" data-act="addicubed" ${D.beds>=ICU_MAX||S.money<ICU_BED_COST?'disabled':''}>${D.beds>=ICU_MAX?'Max beds':`Add bed · ${fmt$(ICU_BED_COST)}`}</button></div>
@@ -1866,16 +1868,7 @@ function erView(v='er'){const d=DEPT[v],D=S.depts[v],er=v==='er';
   const addRoom=(k,n)=>`<button class="btn sm" data-act="addroom" data-d="${v}" data-k="${k}" ${n>=ROOMMAX||S.money<ROOM_COST?'disabled':''}>${n>=ROOMMAX?'Max rooms':`Add room · ${fmt$(ROOM_COST)}`}</button>`;
   return `<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
      <p>Queue, then a triage room with a nurse, then the waiting room or a diagnostic room with a doctor.</p></div></div></div>
-   <div class="roster">
-    <div class="rgrp${rgCls(v+':nurse')}"><div class="rh">${rgHead(v+':nurse','Nurses',staffN(v,'nurse'))}<span class="sal">${fmt$(NURSE_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="nurse" ${S.money<NURSE_PAY?'disabled':''}>Hire nurse</button></div><div class="people">${roster('nurse')}</div>
-     <div class="tests"><span>Nurse tests:</span>${NURSE_EX.filter(x=>examHere(x,v)).map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div></div>
-    <div class="rgrp${rgCls(v+':doctor')}"><div class="rh">${rgHead(v+':doctor','Doctors',staffN(v,'doctor'))}<span class="sal">${fmt$(DOC_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="lead" ${S.money<DOC_PAY?'disabled':''}>Hire doctor</button></div><div class="people">${roster('doctor')}</div>
-     <div class="tests"><span>Doctors run every test here, diagnose and treat.${er?'':` Tests here: ${esc(EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v)).map(x=>EXAMS[x].name).join(', ')||'basic exams only')}.`}</span></div></div>
-    ${hasOR(v)?`<div class="rgrp${rgCls(v+':surgeon')}"><div class="rh">${rgHead(v+':surgeon','Surgeons',staffN(v,'surgeon'))}<span class="sal">${fmt$(SURGEON_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="surgeon" ${S.money<SURGEON_PAY?'disabled':''}>Hire surgeon</button></div><div class="people">${roster('surgeon')}</div>
-     <div class="tests"><span>Each surgery needs a free surgeon, anesthesiologist and nurse, plus an operating room.</span></div></div>
-    <div class="rgrp${rgCls(v+':anes')}"><div class="rh">${rgHead(v+':anes','Anesthesiologists',staffN(v,'anes'))}<span class="sal">${fmt$(ANES_PAY)} to hire</span><button class="btn sm" data-act="hire" data-d="${v}" data-r="anes" ${S.money<ANES_PAY?'disabled':''}>Hire anesthesiologist</button></div><div class="people">${roster('anes')}</div>
-     <div class="tests"><span>Anesthesiologists keep patients asleep and safe during surgery.</span></div></div>`:''}
-   </div>
+   ${staffLink(v)}
    ${v==='clinic'?apptZone():''}
    <section class="zone"><div class="zone-h"><h2>${er?'ER queue':'Queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span><span class="note">Waiting for a triage room.</span></div>${slots(D.q,QMAX,'Spot','No one waiting')}</section>
    <section class="zone"><div class="zone-h"><h2>Triage rooms</h2><span class="cap">${D.tri.length}/${D.triRooms}</span><span class="note">Assign a nurse to run the first tests.</span>${addRoom('tri',D.triRooms)}</div>${slots(D.tri,D.triRooms,'Triage')}</section>
@@ -1927,12 +1920,17 @@ function staffGroups(v){const D=S.depts[v];
   if(hasNamedClin(v)){const g=[['nurse','Nurses',NURSE_PAY,'nurse'],['doctor','Doctors',DOC_PAY,'lead']];if(hasOR(v))g.push(['surgeon','Surgeons',SURGEON_PAY,'surgeon'],['anes','Anesthesiologists',ANES_PAY,'anes']);return g}
   if(NAMED_ROLE[v])return [[NAMED_ROLE[v],ROLE_TITLE[NAMED_ROLE[v]]+'s',leadRole(v)[1],'lead']];
   return [[null,leadRole(v)[0],leadRole(v)[1],'lead']]}
+function staffLink(v){const D=S.depts[v];
+  const parts=staffGroups(v).map(([role,label,,])=>{const n=role?(D.staff||[]).filter(x=>x.role===role).length:(D.lead||0);const one=label.replace(/s$/,'').toLowerCase();
+    return `<span class="${n?'':'warnnote'}">${n} ${n===1?one:label.toLowerCase()}</span>`});
+  return `<div class="stlink"><b>Staff</b>${parts.join('<span class="sep">·</span>')}<button class="btn sm" data-act="view" data-v="staff">Manage staff</button></div>`}
 function staffHTML(){
   const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>a.name.localeCompare(b.name));
   const all=allStaff(),busy=all.filter(x=>staffBusyWith(x.id)).length,sick=all.filter(x=>isSick(x)).length;
   const unnamed=on.filter(d=>!hasNamedClin(d.id)&&!NAMED_ROLE[d.id]).reduce((n,d)=>n+(S.depts[d.id].lead||0),0);
   let h=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:150">STAF</span><div><h1>Staff</h1>
-    <p>Everyone on staff in every open department. Hire from here or open a department to manage it.</p></div></div>
+    <p>Everyone on staff in every open department. Hire from here, or tap a department's arrow to fold it.</p></div></div>
+    <div class="line wrap"><button class="btn sm" data-act="stall" data-v="1">Expand all</button><button class="btn sm" data-act="stall" data-v="0">Collapse all</button></div>
     <div class="ptsum mono"><span><b>${all.length+unnamed}</b> on staff</span><span><b>${all.length-busy-sick}</b> free</span><span><b>${busy}</b> with a patient</span>${sick?`<span><b>${sick}</b> out sick</span>`:''}</div></div>`;
   on.forEach(d=>{const v=d.id,D=S.depts[v];let total=0;
     const rows=staffGroups(v).map(([role,label,cost,r])=>{
@@ -1942,7 +1940,8 @@ function staffHTML(){
       else{n=D.lead||0;ppl=`<div class="staff"><button data-act="fire" data-d="${v}" data-r="lead" ${n?'':'disabled'} aria-label="Let one go">−</button><b>${n}</b></div>`}
       total+=n;
       return `<div class="strow"><span class="strole">${esc(label)} <span class="rgn mono">${n}</span></span><div class="people">${ppl}</div><button class="btn sm" data-act="hire" data-d="${v}" data-r="${r}" ${S.money<cost?'disabled':''}>Hire · ${fmt$(cost)}</button></div>`}).join('');
-    h+=`<section class="stcard ${total?'':'empty'}"><div class="sthead"><button class="stname" data-act="view" data-v="${v}"><span class="badge" style="--h:${d.hue}">${d.code}</span><b>${esc(d.name)}</b></button><span class="cap mono">${total} staff</span>${total?'':'<span class="warnnote empty-note">No staff yet</span>'}</div>${rows}</section>`});
+    const k='st:'+v,shut=staffShut.has(k);
+    h+=`<section class="stcard ${total?'':'empty'}${shut?' shut':''}"><div class="sthead"><button class="rgt" data-act="rgtoggle" data-k="${k}" aria-expanded="${!shut}" aria-label="${shut?'Show':'Hide'} ${esc(d.name)} staff"><span class="car" aria-hidden="true"></span></button><button class="stname" data-act="view" data-v="${v}"><span class="badge" style="--h:${d.hue}">${d.code}</span><b>${esc(d.name)}</b></button><span class="cap mono">${total} staff</span>${total?'':'<span class="warnnote empty-note">No staff yet</span>'}</div>${rows}</section>`});
   return h;
 }
 function renderMain(){
@@ -1978,7 +1977,7 @@ function renderMain(){
       const role=leadRole(v);
       h+=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:${d.hue}">${d.code}</span><div><h1>${esc(d.name)}</h1>
         <p>${D.lead?`${busyCount(v)} of ${D.lead} ${role[0].toLowerCase()} busy`:`<span class="pr-r">No ${role[0].toLowerCase()} on staff. Hire one to start work.</span>`}</p></div></div>
-        ${NAMED_ROLE[v]?`</div>${techRoster(v)}`:staffRowHTML(v)}`;
+        </div>${staffLink(v)}`;
       const ex=EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v));
       if(d.kind!=='pharm'&&d.kind!=='path')h+=`<div class="tests"><span>Tests here:</span>${d.kind==='clinic'?'<span class="chip">Basic exams</span>':''}${ex.map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div>`;
       if(d.kind==='path'){
@@ -2201,6 +2200,7 @@ document.addEventListener('click',e=>{
     case 'rushicu':{if(!p)return;sendTo(p,'icu');if(p.loc==='icu'){toast(`${p.first} rushed to the ICU.`,'good');S.view='icu'}break}
     case 'goto':{const q=S.P[b.dataset.pid];if(!q)return;S.view=q.loc==='rec'?'rec':q.loc;S.pid=q.id;break}
     case 'pause':S.speed=S.speed?0:1;break;
+    case 'stall':{DEPTS.forEach(d=>{const k='st:'+d.id;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'rgtoggle':{const k=b.dataset.k;if(staffShut.has(k))staffShut.delete(k);else staffShut.add(k);try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'intake':S.intakeOff=!S.intakeOff;log(S.intakeOff?'Walk-in intake closed. Clinic appointments still arrive.':'Walk-in intake reopened.',S.intakeOff?'warn':'good');toast(S.intakeOff?'Intake off: no walk-ins (appointments still arrive)':'Intake on');break;
     case 'exam':p&&queueExam(p,b.dataset.x);break;
