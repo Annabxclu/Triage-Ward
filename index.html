@@ -1375,6 +1375,7 @@ const DAY = 30, /* recovery minutes per real-life day of stay */ BED_COST = 3000
 const roomRate = d=>d==='icu'?4000:1500;
 const FIRST_F = ["Maya","Grace","Lucia","Amara","Hannah","Nora","Priya","Elena","Tasha","Ruth","Mei","Sofia","Zoe","Imani","Leah","Rosa","Ivy","Dana","June","Keisha","Ana","Hazel","Noor","Esther"];
 const FIRST_M = ["Marcus","Daniel","Owen","Rafael","Kwame","Theo","Samuel","Luis","Arjun","Victor","Jamal","Henry","Elijah","Tomás","Ray","Felix","Gus","Andre","Malik","Walter","Isaac","Diego","Kenji","Omar"];
+const STAFF_LAST = ["Abbott", "Acosta", "Ahmadi", "Aldridge", "Alvarado", "Amari", "Andersen", "Arakawa", "Ashford", "Avila", "Bader", "Baird", "Banerjee", "Barlow", "Bautista", "Beaumont", "Bello", "Bergstrom", "Bianchi", "Blackwood", "Bose", "Bowman", "Bradshaw", "Calloway", "Campos", "Carver", "Caruso", "Chandra", "Cho", "Clement", "Colburn", "Conti", "Crane", "Cruz", "Dalton", "Darby", "Dasgupta", "Delacroix", "Desai", "Dimitrov", "Donovan", "Drummond", "Dubois", "Eastman", "Ekström", "Emerson", "Espinoza", "Farrow", "Ferreira", "Finch", "Fitzgerald", "Flores", "Forsythe", "Fujita", "Gallagher", "Garza", "Gill", "Goldberg", "Granger", "Guerrero", "Gupta", "Halvorsen", "Hartley", "Hashemi", "Hayward", "Henning", "Hoffman", "Horvath", "Huang", "Hughes", "Ingram", "Ivanova", "Iwasaki", "Jansen", "Jaramillo", "Jensen", "Joshi", "Kahale", "Kapoor", "Keller", "Kendrick", "Khalil", "Kim", "Kingsley", "Kovac", "Kumar", "Lachance", "Lambert", "Larsen", "Laurent", "Leblanc", "Lennox", "Levesque", "Lopez", "Lund", "Macias", "Mahoney", "Malik", "Marchetti", "Mbeki", "Mccall", "Medina", "Mendoza", "Mercer", "Meyer", "Mishra", "Molina", "Monroe", "Morales", "Mukherjee", "Murphy", "Nadeau", "Nair", "Navarro", "Nguyen", "Nilsson", "Novak", "Nwosu", "Oakley", "Obi", "Ochoa", "Okonkwo", "Olsen", "Ortega", "Ostrowski", "Pace", "Padilla", "Park", "Pearce", "Pham", "Pierce", "Quintero", "Rahman", "Ramirez", "Rao", "Rasmussen", "Redding", "Rinaldi", "Rivera", "Rocha", "Rojas", "Rossi", "Rowe", "Saito", "Salazar", "Sandoval", "Santos", "Schmidt", "Sharma", "Shaw", "Silva", "Sinclair", "Solberg", "Sorensen", "Soto", "Stanton", "Steele", "Suzuki", "Takahashi", "Tan", "Tanaka", "Thakur", "Torres", "Tran", "Ueda", "Underwood", "Valdez", "Varga", "Vasquez", "Vega", "Voss", "Wagner", "Walsh", "Watanabe", "Webb", "Weiss", "Winslow", "Wong", "Xu", "Yilmaz", "Young", "Zamora", "Zhang", "Zielinski"];
 const LAST = ["Okafor","Reyes","Lindqvist","Patel","Brennan","Nakamura","Holloway","Adeyemi","Castillo","Marsh","Whitaker","Duarte","Kowalski","Abernathy","Chen","Fontaine","Delgado","Moreau","Greer","Osei","Yamada","Pruitt","Vance","Haddad","Sutton","Ibarra","Quinlan","Barros","Thorne","Ellison"];
 const INS = [
  {n:'Uninsured',c:.25,w:2},{n:'StateCare',c:.55,w:2},{n:'Unity Health',c:1,w:2},{n:'Harbor Mutual',c:.95,w:2},
@@ -1499,8 +1500,12 @@ const ROLE_TITLE={doctor:'Dr.',nurse:'Nurse',labtech:'Lab Tech',radtech:'Rad Tec
 function allStaff(){return DEPTS.map(d=>d.id).flatMap(d=>(S.depts[d]&&S.depts[d].staff)||[])}
 function syncStaff(d){const D=S.depts[d];if(!D.staff)return;if(hasNamedClin(d)){D.nurse=D.staff.filter(x=>x.role==='nurse').length;D.lead=D.staff.filter(x=>x.role==='doctor').length}else D.lead=D.staff.length}
 function syncER(){syncStaff('er')}
-function hireNamed(role,d='er'){const D=S.depts[d];if(!D.staff)D.staff=[];const used=new Set(allStaff().map(x=>x.last));const pool=LAST.filter(l=>!used.has(l));
-  D.staff.push({id:'s'+(S.seq++),role,d,last:pool.length?pick(pool):pick(LAST)+' '+(D.staff.length+1)});syncStaff(d)}
+/* every staff member gets a surname nobody else on staff has */
+function uniqueStaffName(used){const pool=STAFF_LAST.filter(l=>!used.has(l));if(pool.length)return pick(pool);
+  for(const l of STAFF_LAST)for(const ch of 'ABCDEFGHJKLMNPRSTW'){const n=ch+'. '+l;if(!used.has(n))return n}return 'Staff '+S.seq}
+function hireNamed(role,d='er'){const D=S.depts[d];if(!D.staff)D.staff=[];const used=new Set(allStaff().map(x=>x.last));
+  D.staff.push({id:'s'+(S.seq++),role,d,last:uniqueStaffName(used)});syncStaff(d)}
+function dedupeStaff(){const used=new Set();allStaff().forEach(x=>{if(used.has(x.last)||/ \d+$/.test(x.last)){x.last=uniqueStaffName(used)}used.add(x.last)})}
 function erInit(){DEPTS.filter(d=>d.kind==='clinic').forEach(dd=>{const d=dd.id,D=S.depts[d];if(!D.tri)D.tri=[];if(!D.dxr)D.dxr=[];if(!D.triRooms)D.triRooms=2;if(!D.dxRooms)D.dxRooms=2;
   if(!D.staff){const n=D.nurse,l=D.lead;D.staff=[];for(let i=0;i<n;i++)hireNamed('nurse',d);for(let i=0;i<l;i++)hireNamed('doctor',d)}syncStaff(d);
     const old=[...D.q,...D.w].filter(id=>S.P[id]&&!S.P[id].stage);
@@ -2157,7 +2162,7 @@ function start(data){
   S=(data&&data.state)||load();
   if(S)S.speed=S.speed?1:0;
   if(S&&S.depts.pharm&&(S.depts.pharm.w||[]).length){const P=S.depts.pharm;P.w.forEach(id=>{if(S.P[id]){S.P[id].inW=false;P.q.push(id)}});P.w=[]}
-  if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();
+  if(S){DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[],adm:[],beds:d.kind==='clinic'?START_BEDS:0}});erInit();dedupeStaff();
     const I=S.depts.icu;if(!I.icuV){I.icuV=1;I.beds=Math.max(I.beds||0,ICU_START);I.dxr=I.dxr||[];const mv=[...(I.q||[]),...(I.w||[]),...(I.tri||[])];I.q=[];I.w=[];I.tri=[];
       mv.forEach(id=>{const p=S.P[id];if(!p)return;I.dxr.push(id);p.stage='icu';p.nurse=null;p.doc=p.doc||null;p.inW=false});(I.dxr||[]).forEach(id=>{if(S.P[id])S.P[id].stage='icu'})}}
   if(S)DEPTS.forEach(d=>{if(!S.depts[d.id])S.depts[d.id]={on:false,lead:0,nurse:0,q:[],w:[]};const D=S.depts[d.id];if(!D.adm)D.adm=[];if(D.beds==null)D.beds=d.kind==='clinic'?START_BEDS:0});
