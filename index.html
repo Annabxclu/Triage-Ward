@@ -1544,7 +1544,10 @@ async function fbImport(name){
 async function fbInit(){if(fb)return fb;
   const [A,U,F]=await Promise.all([fbImport('app'),fbImport('auth'),fbImport('firestore')]);
   const app=A.initializeApp(FB_CFG);fb={U,F,auth:U.getAuth(app),db:F.getFirestore(app)};
-  U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudUI();if(u)cloudOnSignIn()});return fb}
+  try{await U.setPersistence(fb.auth,U.browserLocalPersistence)}catch(e){}
+  U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudUI();if(u){try{localStorage.setItem('hospital-cloud','1')}catch(e){}cloudOnSignIn()}});
+  U.getRedirectResult(fb.auth).catch(e=>{cloudMsg=signInMsg(e);cloudUI()});return fb}
+function signInMsg(e){return e.code==='auth/unauthorized-domain'?'Sign-in only works on the GitHub site (annabxclu.github.io).':e.code==='auth/popup-closed-by-user'||e.code==='auth/cancelled-popup-request'?'':e.code==='auth/web-storage-unsupported'||e.code==='auth/operation-not-supported-in-this-environment'?'This browser is blocking sign-in. Open the link in Safari or Chrome (not inside another app), and allow cookies.':e.code?'Sign-in failed ('+e.code+'). Try again in Safari or Chrome.':'Sign-in isn\'t available here. Open the game on the GitHub site (annabxclu.github.io/Triage-Ward) to sign in.'}
 function localSavedAt(){try{const s=localStorage.getItem(KEY);if(!s)return 0;return JSON.parse(s).savedAt||1}catch(e){return 0}}
 async function cloudPush(force){if(!fbUser||!fb||cloudBusy||applyingCloud)return;const st=localStorage.getItem(KEY);if(!st)return;const at=localSavedAt();if(!force&&at<=lastPushedAt)return;
   cloudBusy=true;try{await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid),{state:st,book:localStorage.getItem(BOOKKEY)||'{}',updated:at,device:DEVICE,name:S?S.name:''});lastPushedAt=at;lastPush=Date.now();cloudMsg='';}
@@ -1556,10 +1559,10 @@ async function cloudOnSignIn(){if(!fbUser)return;cloudBusy=true;cloudUI();let sn
     applyingCloud=true;try{localStorage.setItem(KEY,r.state);localStorage.setItem(BOOKKEY,r.book||'{}')}catch(e){}
     toast('Loaded your latest save from your account.','good');setTimeout(()=>location.reload(),600);return}
   if(loc)cloudPush(true);else cloudUI()}
-async function cloudSignIn(){cloudMsg='';try{await fbInit();const P=new fb.U.GoogleAuthProvider();
-    try{await fb.U.signInWithPopup(fb.auth,P)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')await fb.U.signInWithRedirect(fb.auth,P);else throw e}
-    try{localStorage.setItem('hospital-cloud','1')}catch(e){}}
-  catch(e){cloudMsg=e.code==='auth/unauthorized-domain'?'Sign-in only works on the GitHub site (annabxclu.github.io).':e.code==='auth/popup-closed-by-user'?'':e.code?'Sign-in failed ('+e.code+'). Try again, or open the game on the GitHub site.':'Sign-in isn\'t available here. Open the game on the GitHub site (annabxclu.github.io/Triage-Ward) to sign in.';cloudUI()}}
+function cloudSignIn(){cloudMsg='';
+  if(!fb){cloudMsg='Getting sign-in ready… tap Sign in again in a moment.';cloudUI();fbInit().then(()=>{cloudMsg='';cloudUI()}).catch(e=>{cloudMsg=signInMsg(e);cloudUI()});return}
+  const P=new fb.U.GoogleAuthProvider();P.setCustomParameters({prompt:'select_account'});
+  fb.U.signInWithPopup(fb.auth,P).catch(e=>{if(e.code==='auth/popup-blocked'){try{localStorage.setItem('hospital-cloud','1')}catch(x){}fb.U.signInWithRedirect(fb.auth,P).catch(x=>{cloudMsg=signInMsg(x);cloudUI()})}else{cloudMsg=signInMsg(e);cloudUI()}})}
 async function cloudSignOut(){if(!fb)return;await cloudPush(true);await fb.U.signOut(fb.auth);try{localStorage.removeItem('hospital-cloud')}catch(e){}fbUser=null;cloudUI();toast('Signed out. This device keeps its own copy.')}
 function cloudUI(){const el=document.getElementById('acctBox');if(!el)return;
   if(fbUser){el.innerHTML=`<div class="acct">${fbUser.photoURL?`<img src="${esc(fbUser.photoURL)}" alt="" referrerpolicy="no-referrer">`:''}<div><b>${esc(fbUser.displayName||'Signed in')}</b><span>${esc(fbUser.email||'')}</span></div></div>
@@ -1567,7 +1570,7 @@ function cloudUI(){const el=document.getElementById('acctBox');if(!el)return;
     <div class="line wrap"><button class="btn sm" data-act="cloudsync">Save now</button><button class="btn sm" data-act="cloudout">Sign out</button></div>`}
   else el.innerHTML=`<p class="acctst">Sign in to keep the same hospital and Casebook on every device.</p>${cloudMsg?`<p class="acctst warnnote">${esc(cloudMsg)}</p>`:''}<div><button class="btn primary" data-act="cloudin">Sign in with Google</button></div>`}
 /* restore an existing session quietly */
-try{if(localStorage.getItem('hospital-cloud')==='1'&&typeof document!=='undefined')fbInit().catch(e=>{fbErr=String(e)})}catch(e){}
+try{if(typeof document!=='undefined'&&/^https?:$/.test(location.protocol))fbInit().catch(e=>{fbErr=String(e)})}catch(e){}
 
 function load(){try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}return null}
 
