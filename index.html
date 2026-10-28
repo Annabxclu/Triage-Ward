@@ -1265,7 +1265,7 @@ let testCond='';
 function needsAction(p){if(p.busy)return false;if(p.adm)return !!p.adm.ready;if(p.tq&&p.tq.length&&canRun(p))return false;return true}
 function renderSide(){
   const ae=document.activeElement;if(ae&&ae.id==='testCond')return;
-  const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>a.id==='er'?-1:b.id==='er'?1:a.name.localeCompare(b.name)), off=DEPTS.filter(d=>!S.depts[d.id].on);
+  const on=DEPTS.filter(d=>S.depts[d.id].on).sort((a,b)=>{const top=['er','pharm'],ia=top.indexOf(a.id),ib=top.indexOf(b.id);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return a.name.localeCompare(b.name)}), off=DEPTS.filter(d=>!S.depts[d.id].on);
   const redIn=ids=>ids.filter(i=>S.P[i]&&cond(S.P[i]).p==='r'&&!S.P[i].treated).length;
   const colIn=ids=>ids.filter(i=>S.P[i]&&S.P[i].collapsed).length;
   const item=(id,code,name,count,hue,reds,cols)=>`<button class="navi ${S.view===id?'on':''}" data-act="view" data-v="${id}">
