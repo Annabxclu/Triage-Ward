@@ -17,7 +17,7 @@ Every confirmed case goes into the **Casebook** with its findings, tests, treatm
 Insurance plans and patient names are fictional. Medical content is simplified for gameplay and is not medical advice.
 
 ## Running locally
-It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage. The game runs on real time (a 10-minute CT head takes 10 real minutes) and pauses while the page is closed.
+It's a single file. Open `index.html` in any modern browser. Progress saves in the browser's local storage. The game runs on game time: 1 game minute is 15 real seconds at 1× (a 10-minute CT head takes 2½ real minutes), with a Speed button for 2× and 4×. It pauses while the page is closed.
 
 ## Test mode
 Click **Test mode** in the top bar to open test tools in the sidebar: add money, unlock and staff every department, skip time, finish all running timers, clear reception, or add a patient with a specific condition. Click it again to hide the tools.
