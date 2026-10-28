@@ -294,6 +294,13 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .rxlist{margin-top:6px}
 .rxlist ul{margin:4px 0 0;padding-left:18px;display:grid;gap:2px}
 .rxlist .mt{font-size:10px;font-weight:700;letter-spacing:.06em;border-radius:3px;padding:1px 5px;border:1px solid var(--line);color:var(--muted);margin-left:4px}
+.medgrp{border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.medgrp>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 12px;font-weight:700;font-size:13px}
+.medgrp>summary::-webkit-details-marker{display:none}
+.medgrp>summary::before{content:"";width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+.medgrp[open]>summary::before{transform:rotate(90deg)}
+.medgrp>summary .mono{margin-left:auto;font-weight:500;font-size:12px;color:var(--muted)}
+.medgrp>.meds{padding:0 8px 8px}
 .medgroup{font-size:12px;font-weight:700;color:var(--muted);margin-top:4px}
 .bill{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
 .bill b{font-family:var(--f-mono);color:var(--ink)}
@@ -391,7 +398,7 @@ const DEPTS = [
  ['id','Infectious Diseases','ID',12000,'clinic'],
  ['psych','Psychiatry','PSY',8000,'clinic'],
  ['onc','Oncology','ONC',24000,'clinic'],
- ['ob','OB/GYN','OBG',15000,'clinic'],
+ ['ob','Obstetrician & Gynecologist','OBG',15000,'clinic'],
  ['plastic','Plastic Surgery','PLAS',16000,'clinic'],
  ['sh','Sexual Health','SXH',6000,'clinic'],
  ['neph','Nephrology','NEPH',14000,'clinic'],
@@ -1017,6 +1024,7 @@ const SENIOR = {n:'SilverYears',c:.8,w:0};
 const KEY='hospital-sim-v1', BOOKKEY='hospital-casebook-v1';
 let BOOK={}; try{BOOK=JSON.parse(localStorage.getItem(BOOKKEY)||'{}')||{}}catch(e){BOOK={}}
 let ordersOpen=true;try{ordersOpen=localStorage.getItem('hospital-orders-open')!=='0'}catch(e){}
+const medOpen=new Set();
 let lockedOpen=true;try{lockedOpen=localStorage.getItem('hospital-locked-open')!=='0'}catch(e){}
 let bookOpen=new Set();try{bookOpen=new Set(JSON.parse(localStorage.getItem('hospital-book-open')||'[]'))}catch(e){}
 const saveBookOpen=()=>{try{localStorage.setItem('hospital-book-open',JSON.stringify([...bookOpen]))}catch(e){}};
@@ -1493,9 +1501,9 @@ function chartHTML(p){
   if(L==='pharm'){
     h+=`<div class="sec"><div class="callout good"><b>Diagnosis:</b> ${esc(c.n)}<br>Treated: ${esc(c.tx[0])}<div class="rxlist"><b>Medication to dispense:</b><ul>${c.rx.map(r=>`<li>${esc(MEDS[r].name)} <span class="mt">${MEDS[r].type}</span></li>`).join('')}</ul></div></div></div>
      <div class="sec"><h3>Dispense medication <span>pick what they need</span></h3><div class="meds">`;
-    ['OTC','Rx'].forEach(t=>{h+=`<div class="medgroup">${t==='OTC'?'Over the counter':'Prescription'}</div>`;
+    ['OTC','Rx'].forEach(t=>{const n=Object.values(MEDS).filter(m=>m.type===t).length;h+=`<details class="medgrp" data-g="${t}" ${medOpen.has(t)?'open':''}><summary>${t==='OTC'?'Over the counter':'Prescription'}<span class="mono">${n} items</span></summary><div class="meds">`;
       Object.values(MEDS).filter(m=>m.type===t).sort((a,b)=>a.name.localeCompare(b.name)).forEach(m=>{
-        h+=`<label class="med"><input type="checkbox" id="med-${m.id}" value="${m.id}"><span class="mn">${esc(m.name)}</span><span class="mt">${t}</span><span class="mp">${fmt$(m.price)}</span></label>`})});
+        h+=`<label class="med"><input type="checkbox" id="med-${m.id}" value="${m.id}"><span class="mn">${esc(m.name)}</span><span class="mt">${t}</span><span class="mp">${fmt$(m.price)}</span></label>`});h+=`</div></details>`});
     h+=`</div><div class="line" style="display:flex;gap:6px;flex-wrap:wrap">
      <button class="btn primary" data-act="dispense" ${S.depts.pharm.lead?'':'disabled'}>Dispense</button>
      <button class="btn" data-act="paper">Discharge with paper script</button></div>
@@ -1591,6 +1599,7 @@ function renderChart(){
   const ae=document.activeElement;
   if(chartKey===p.id&&ae&&el.contains(ae)&&ae.tagName==='SELECT'){chartPending=true;return}
   const keep={};el.querySelectorAll('select,input[type=checkbox]').forEach(i=>keep[i.id]=i.type==='checkbox'?i.checked:i.value);
+  if(chartKey!==p.id)medOpen.clear();
   const sc=el.scrollTop;el.innerHTML=chartHTML(p);el.hidden=false;if(chartKey!==p.id)el.scrollTop=0;
   if(chartKey===p.id){for(const k in keep){const i=document.getElementById(k);if(!i)continue;
     if(i.type==='checkbox')i.checked=keep[k];else if([...i.options].some(o=>o.value===keep[k]&&!o.disabled))i.value=keep[k]}el.scrollTop=sc}
@@ -1675,7 +1684,7 @@ document.addEventListener('click',e=>{
   autoAssign();dirty=true;render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='bookQ'){bookQ=e.target.value;renderMain()}});
-document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
+document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('medgrp')){if(e.target.open)medOpen.add(e.target.dataset.g);else medOpen.delete(e.target.dataset.g)}if(e.target.classList&&e.target.classList.contains('bookgrp')&&!bookQ.trim()){const d=e.target.dataset.d;if(e.target.open)bookOpen.add(d);else bookOpen.delete(d);saveBookOpen()}if(e.target.id==='ordBox'){ordersOpen=e.target.open;try{localStorage.setItem('hospital-orders-open',ordersOpen?'1':'0')}catch(err){}}if(e.target.id==='lockGrp'){lockedOpen=e.target.open;try{localStorage.setItem('hospital-locked-open',lockedOpen?'1':'0')}catch(err){}}},true);
 document.addEventListener('change',e=>{if(e.target.id==='testCond')testCond=e.target.value});
 document.addEventListener('focusout',()=>{if(chartPending)setTimeout(()=>{if(chartPending)renderChart()},0)});
 document.getElementById('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=document.getElementById('hospName').value.trim()||'Mercy Ridge General';fresh(n);render();save()});
