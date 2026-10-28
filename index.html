@@ -395,9 +395,8 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .meter b span{white-space:nowrap}
   .meters .menu{grid-column:span 1;padding:6px 4px;font-size:13px;text-align:center;min-height:36px}
   .meters #pauseBtn{grid-column:1}
-  .meters #speedBtn{grid-column:2}
-  .meters #intakeBtn{grid-column:3}
-  .meters #testBtn{grid-column:4}
+  .meters #intakeBtn{grid-column:2}
+  .meters #testBtn{grid-column:3}
   .meters #newBtn{grid-column:4}
   /* sidebar pieces: ward switcher sticks to the top, extras move below the ward */
   .body,.body.has-chart{display:flex;flex-direction:column}
@@ -456,10 +455,10 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       </div>
       <ul>
         <li>You open with a free Emergency Room, one doctor and one nurse. Every other department must be bought.</li>
-        <li>A new patient arrives every 8 minutes and goes straight to the department for their condition.</li>
-        <li>Red patients have 1 hour. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
+        <li>A new walk-in arrives every 8 real minutes (32 game minutes) and goes straight to the department for their condition.</li>
+        <li>Red patients have 1 real hour, yellow 2 hours, green 3 hours. Run tests, uncover findings, make the diagnosis, treat, then dispense meds.</li>
         <li>Stuck, or the right ward is locked? Transfer them to another hospital.</li>
-        <li>Time runs as game time: 1 game minute is 15 real seconds, so a 10-minute CT head takes 2½ real minutes. Use the Speed button for 2× or 4×. Closing the page pauses your hospital.</li>
+        <li>Time runs as game time: 1 game minute is 15 real seconds, so a 10-minute CT head takes 2½ real minutes. Closing the page pauses your hospital.</li>
       </ul>
       <button class="btn primary big" type="submit" id="startBtn">Open the doors</button>
     </form>
@@ -475,7 +474,6 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Patients</small><b id="ptCount">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
-      <button class="menu" data-act="speed" id="speedBtn" title="Game speed: 1× = 1 game minute every 15 seconds">Speed 1×</button>
       <button class="menu" data-act="intake" id="intakeBtn" title="Stop or start walk-in patients (clinic appointments still arrive)">Intake on</button>
       <button class="menu" data-act="testmode" id="testBtn">Test mode</button>
       <button class="menu" data-act="newgame" id="newBtn">New game</button>
@@ -522,11 +520,12 @@ const DEPT = Object.fromEntries(DEPTS.map(d=>[d.id,d]));
 const ROLE = {clinic:['Doctors',1400],lab:['Lab techs',600],rad:['Rad techs',900],pharm:['Pharmacists',900],path:['Pathologists',1000]}; /* one-time hiring cost; no daily payroll */
 function leadRole(d){return ROLE[d==='lab'?'lab':d==='rad'?'rad':DEPT[d].kind==='pharm'?'pharm':DEPT[d].kind==='path'?'path':'clinic']}
 const NURSE_PAY = 450, TQMAX = 3;
-const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 8;
-const PAT = {r:60, y:90, g:120};
+const QMAX = 10, WMAX = 5, RECMAX = 10, ARRIVAL = 32; /* 32 game minutes = 8 real minutes */
+/* time limits in game minutes; 4 game minutes = 1 real minute -> red 1 h, yellow 2 h, green 3 h real time */
+const PAT = {r:240, y:480, g:720};
 const PRIO = {r:'Urgent', y:'Moderate', g:'Non-urgent'};
 const MS_PER_MIN = 15000; // game time: one game minute is 15 real seconds (at 1×)
-const SPEEDS=[1,2,4];
+const SPEEDS=[1];
 
 const EXAMS = {};
 const EXAM_SPEED=0.5; /* every test and exam runs in half its listed time */
@@ -1688,7 +1687,7 @@ function dispense(p,ids){
 }
 function die(p){
   S.st.died++;rep(-8);const c=cond(p);p.busy=null;
-  log(`${pname(p)} died waiting for care.`,'bad');toast(`${p.first} ${p.last} died. Urgent patients have 1 hour.`,'bad');
+  log(`${pname(p)} died waiting for care.`,'bad');toast(`${p.first} ${p.last} died. Red patients have 1 real hour.`,'bad');
   removeFrom(p);
   if(S.depts.path.on&&S.morgue.length<QMAX){p.loc='morgue';p.deadline=null;p.v++;S.morgue.push(p.id)}else{delete S.P[p.id];if(S.pid===p.id)S.pid=null}
   dirty=true;
@@ -2157,7 +2156,6 @@ function renderTop(){
 }
 function tickUI(){
   document.getElementById('clock').innerHTML=`<span>Day ${gameDay(S.t)}</span> <span>${gameClock(S.t)}</span>${S.speed?'':' <span>· Paused</span>'}`;
-  const sb=document.getElementById('speedBtn');if(sb)sb.textContent=`Speed ${S.speed||S.lastSpeed||1}×`;
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
@@ -2207,8 +2205,7 @@ document.addEventListener('click',e=>{
     case 'addicubed':{const D=S.depts.icu;if(S.money<ICU_BED_COST||D.beds>=ICU_MAX)return;S.money-=ICU_BED_COST;D.beds++;toast('ICU bed added.');break}
     case 'rushicu':{if(!p)return;sendTo(p,'icu');if(p.loc==='icu'){toast(`${p.first} rushed to the ICU.`,'good');S.view='icu'}break}
     case 'goto':{const q=S.P[b.dataset.pid];if(!q)return;S.view=q.loc==='rec'?'rec':q.loc;S.pid=q.id;break}
-    case 'pause':if(S.speed){S.lastSpeed=S.speed;S.speed=0}else S.speed=S.lastSpeed||1;break;
-    case 'speed':{const cur=S.speed||S.lastSpeed||1;const nx=SPEEDS[(SPEEDS.indexOf(cur)+1)%SPEEDS.length];S.lastSpeed=nx;if(S.speed)S.speed=nx;toast(`Speed ${nx}×: 1 game minute every ${15/nx} seconds`);break}
+    case 'pause':S.speed=S.speed?0:1;break;
     case 'stall':{DEPTS.forEach(d=>{const k='st:'+d.id;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'rgtoggle':{const k=b.dataset.k;if(staffShut.has(k))staffShut.delete(k);else staffShut.add(k);try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'intake':S.intakeOff=!S.intakeOff;log(S.intakeOff?'Walk-in intake closed. Clinic appointments still arrive.':'Walk-in intake reopened.',S.intakeOff?'warn':'good');toast(S.intakeOff?'Intake off: no walk-ins (appointments still arrive)':'Intake on');break;
