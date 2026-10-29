@@ -30,7 +30,7 @@ Patients arrive at random through the day. How many come is set by the insurance
 
 A few times a game day an **ambulance** brings a critical patient (heart attack, gunshot wound, stroke and so on) straight to the ER's **trauma bays** (2 to start, $6,000 each up to 6). They arrive collapsing with about 20 game minutes to live; a free ER doctor stabilizes them automatically, then works them up like a diagnostic room. If every bay is full, the ambulance is diverted. Turning intake off also diverts ambulances.
 
-Departments now have **hospital beds** instead of recovery beds. Besides recovery after treatment or surgery, a doctor can **Hospitalize for tests** from a diagnostic room: the patient moves to a bed, their clock stops, and the ward doctor keeps running tests at the bedside (blood goes to the Lab, imaging is portable), diagnoses and treats there. Each ward needs **1 nurse per 4 occupied beds**; when it's short, hospitalized patients can collapse and need a doctor to stabilize them.
+Departments now have **hospital beds** instead of recovery beds. Besides recovery after treatment or surgery, a doctor can **Hospitalize for tests** from a diagnostic room: the patient moves to a bed, their clock stops, and the ward doctor keeps running tests at the bedside (blood goes to the Lab, imaging is portable), diagnoses and treats there. Some treatments **require hospitalization first**: every non-surgical case with a stay (about 190, like pneumonia, meningitis or a heart failure flare) must be hospitalized before the doctor can treat it, then recovers in the same bed. Each ward needs **1 nurse per 4 occupied beds**; when it's short, hospitalized patients can collapse and need a doctor to stabilize them.
 
 ## Surgery
 

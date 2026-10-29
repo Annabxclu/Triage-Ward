@@ -1778,6 +1778,7 @@ function tryNext(p){
 }
 function startTreat(p){
   const c=cond(p);if(p.dx!==p.c||p.busy||p.inW||!c.t.includes(p.loc)||!canTreat(p))return;
+  if(needsHosp(c,p.loc)&&!isHosp(p)){toast('This treatment needs a hospital bed first. Hospitalize them.','warn');return}
   if(isHosp(p)&&!p.doc){const x=freeStaff('doctor',p.loc)[0];if(!x)return;p.doc=x.id}
   if(c.los&&!isICU(p.loc)&&!p.adm&&bedsUsed(p.loc)>=S.depts[p.loc].beds){toast(`No ${bedWord(p.loc)} free in ${DEPT[p.loc].name}. Discharge someone or add ${isObs(p.loc)?'a room':'a bed'}.`,'warn');return}
   p.tq=[];p.collapsed=false;p.busy={k:'treat',d:p.loc,start:S.t,end:S.t+dur(c.tx[1],p.loc)};p.deadline=null;p.v++;dirty=true;
@@ -1785,7 +1786,9 @@ function startTreat(p){
 }
 function canAdmitSurg(p){const c=cond(p);return c.surg&&p.dx===p.c&&isFlow(p.loc)&&hasOR(p.loc)&&c.t.includes(p.loc)&&((p.stage==='dx'&&!!p.doc)||(p.adm&&p.adm.kind==='dx'))&&!p.busy}
 const isHosp=p=>!!(p.adm&&p.adm.kind==='dx');
-function canHospitalize(p){return isFlow(p.loc)&&!isObs(p.loc)&&p.loc!=='clinic'&&p.stage==='dx'&&!!p.doc&&!p.busy&&p.dx!==p.c&&!p.bay&&bedsUsed(p.loc)<S.depts[p.loc].beds}
+/* treatments that need a hospital bed first: every non-surgical case with a stay, outside ER observation and the clinic */
+const needsHosp=(c,L)=>!!c.los&&!c.surg&&isFlow(L)&&!isObs(L)&&L!=='clinic';
+function canHospitalize(p){return isFlow(p.loc)&&!isObs(p.loc)&&p.loc!=='clinic'&&p.stage==='dx'&&!!p.doc&&!p.busy&&!p.bay&&bedsUsed(p.loc)<S.depts[p.loc].beds}
 function hospitalize(p){if(!canHospitalize(p))return;const d=p.loc,keep=p.tq||[];removeFrom(p);p.loc=d;p.inW=false;S.depts[d].adm.push(p.id);p.adm={d,kind:'dx',since:S.t};p.tq=keep;
   if(!p.collapsed)p.deadline=null;p.v++;dirty=true;log(`${pname(p)} hospitalized in ${DEPT[d].name} for tests and monitoring.`);toast(`${p.first} hospitalized`)}
 function admitSurg(p){if(!canAdmitSurg(p))return;const c=cond(p),d=p.loc;
@@ -2022,6 +2025,7 @@ let lastSideView=null;
 function ptStatus(p){
   const c=cond(p);let st='Waiting',cls='';
   if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treating':p.busy.k==='surg'?'In surgery':p.busy.k==='stab'||p.busy.k==='stabT'?'Stabilizing':'Autopsy';st=`${lbl} · <span class="mono" data-bzt="${p.id}"></span>`;cls='busy'}
+  else if(isHosp(p)&&p.dx===p.c&&!p.collapsed)st=`Hospitalized · ready for treatment`;
   else if(isHosp(p))st=p.collapsed?'⚠ Collapsed in bed':p.tq&&p.tq.length?(p.doc?'Hospitalized · tests running':'Hospitalized · tests waiting for a doctor'):p.dx===p.c?`Dx: ${esc(c.n)} · ready to treat`:'Hospitalized · order tests or diagnose';
   else if(p.adm&&p.adm.surg==='wait'){const m=surgMissing(p.adm.d);st=`Awaiting surgery${m.length?' · needs '+m.join(', '):''}`}
   else if(p.loc==='morgue')st=p.autopsy?`Cause: ${esc(c.n)}`:'Awaiting autopsy';
@@ -2244,7 +2248,7 @@ function bookHTML(){
       cards+=`<article class="case"><div class="case-h"><span class="tri ${c.p}"></span><b class="pr-${c.p}">${esc(c.n)}</b><span class="mono seen">seen ${k}×</span></div>${c.desc?`<p class="cdesc">${esc(c.desc)}</p>`:''}
         <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${f.pres?'Complaint':esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
         <dl><dt>Treated in</dt><dd>${esc(c.t.map(t=>DEPT[t].name).join(', '))}</dd>
-        <dt>Treatment</dt><dd>${c.surg?'<b>Surgery:</b> ':''}${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}</dd><dt>Recovery</dt><dd>${c.los?`${fmtDur(c.los*DAY)} in a recovery bed (real-life stay about ${c.los} day${c.los>1?'s':''})`:'Goes home after treatment'}</dd>
+        <dt>Treatment</dt><dd>${c.surg?'<b>Surgery:</b> ':c.los&&c.d!=='er'&&c.d!=='clinic'?'<b>Hospitalization:</b> ':''}${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}</dd><dt>Recovery</dt><dd>${c.los?`${fmtDur(c.los*DAY)} in a recovery bed (real-life stay about ${c.los} day${c.los>1?'s':''})`:'Goes home after treatment'}</dd>
         <dt>Prescription</dt><dd>${esc(c.rx.map(r=>MEDS[r].name).join(', '))}</dd></dl></article>`});
     if(cards)h+=`<details class="zone bookgrp" data-d="${d.id}" ${q||bookOpen.has(d.id)?'open':''}><summary class="zone-h"><h2>${esc(d.name)}</h2><span class="cap">${dk}/${list.length} discovered</span></summary><div class="cases">${cards}</div></details>`});
   setTimeout(()=>{const el=document.getElementById('bookCount');if(el)el.textContent=`${known} of ${CONDS.length} discovered`},0);
@@ -2322,7 +2326,7 @@ function chartHTML(p){
   if(p.dx===p.c){
     const here=c.t.includes(L);
     h+=`<div class="sec"><div class="callout good"><b>Diagnosis confirmed: ${esc(c.n)}</b><br>${c.surg&&hasOR(L)?'Surgery':'Treatment'}: ${esc(c.tx[0])} · ${fmtDur(c.tx[1])} · ${fmt$(c.tx[2])}${c.los?`<br>Then ${fmtDur(c.los*DAY)} in ${here&&isObs(L)?'an observation room':'a recovery bed'}`:''}<br>Handled by: ${esc(c.t.map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(', '))}</div>
-     ${c.surg&&isFlow(L)&&!hasOR(L)?`<div class="callout surgcall"><b>Requires surgery.</b> ${esc(DEPT[L].name)} doesn't operate. Send them to ${esc(surgWards(c).map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(' or ')||'a surgical department')}, where they can be admitted for surgery, or transfer them.</div>`:here&&c.surg&&hasOR(L)?surgAdmitHTML(p):here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${isFlow(L)?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
+     ${c.surg&&isFlow(L)&&!hasOR(L)?`<div class="callout surgcall"><b>Requires surgery.</b> ${esc(DEPT[L].name)} doesn't operate. Send them to ${esc(surgWards(c).map(t=>DEPT[t].name+(S.depts[t].on?'':' (locked)')).join(' or ')||'a surgical department')}, where they can be admitted for surgery, or transfer them.</div>`:here&&c.surg&&hasOR(L)?surgAdmitHTML(p):here&&needsHosp(c,L)&&!isHosp(p)?`<div class="callout surgcall"><b>Requires hospitalization.</b> Treatment (${esc(c.tx[0].toLowerCase())}) happens in a hospital bed in ${esc(DEPT[L].name)}, and they recover there afterward.</div><div class="line wrap"><button class="btn primary" data-act="hospitalize" ${canHospitalize(p)?'':'disabled'}>Hospitalize (${bedsUsed(L)}/${S.depts[L].beds} beds)</button>${bedsUsed(L)>=S.depts[L].beds?'<span class="empty-note warnnote">No hospital bed free. Discharge someone or add a bed.</span>':''}</div>`:here?`<button class="btn primary" data-act="treat" ${!p.busy&&!p.inW&&canTreat(p)?'':'disabled'}>Start treatment</button>${!canTreat(p)&&!p.busy?`<span class="empty-note">${isFlow(L)?'A doctor treats in a diagnostic room.':`All ${leadRole(L)[0].toLowerCase()} are busy.`}</span>`:''}`:`<span class="empty-note">This department can't treat it. Send them to one that can, or transfer.</span>`}</div>`;
   }
 
   // examinations: one list, collapsible
@@ -2354,7 +2358,7 @@ function chartHTML(p){
     h+=`<label for="dxPick">Diagnosis</label><div class="line"><select id="dxPick"><option value="">Choose a diagnosis…</option>${topI.length?`<optgroup label="Most likely">${topI.map(i=>`<option value="${i}">${esc(CONDS[i].n)}${pct(i)}</option>`).join('')}</optgroup>`:''}${DEPTS.filter(d=>groups[d.id]).map(d=>`<optgroup label="${esc(d.name)}">${groups[d.id].sort((a,b)=>a[0].localeCompare(b[0])).map(([n,i])=>`<option value="${i}">${esc(n)}${pct(i)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn primary" data-act="dx" ${p.busy||!evidence(p).ok?'disabled':''}>Confirm</button></div>${evidence(p).ok?'':`<span class="empty-note warnnote">Not enough evidence to confirm yet: ${esc(evidence(p).miss.join(' and '))}.</span>`}`;
   } else if(isHosp(p)&&p.dx!==p.c)h+=`<span class="empty-note">This ward has no doctor to make the diagnosis.</span>`;
   else if(isFlow(L)&&p.dx!==p.c)h+=`<span class="empty-note">A doctor makes the diagnosis in a diagnostic room.</span>`;
-  if(isFlow(L)&&!isHosp(p)&&p.stage==='dx'&&p.dx!==p.c&&!isObs(L)&&L!=='clinic')h+=`<div class="line wrap" style="margin-top:6px"><button class="btn" data-act="hospitalize" ${canHospitalize(p)?'':'disabled'}>Hospitalize for tests (${bedsUsed(L)}/${S.depts[L].beds} beds)</button><span class="empty-note">Frees the diagnostic room. Their clock stops while hospitalized; tests and diagnosis continue at the bedside.</span></div>`;
+  if(isFlow(L)&&!isHosp(p)&&p.stage==='dx'&&p.dx!==p.c&&!isObs(L)&&L!=='clinic'&&!p.bay)h+=`<div class="line wrap" style="margin-top:6px"><button class="btn" data-act="hospitalize" ${canHospitalize(p)?'':'disabled'}>Hospitalize for tests (${bedsUsed(L)}/${S.depts[L].beds} beds)</button><span class="empty-note">Frees the diagnostic room. Their clock stops while hospitalized; tests and diagnosis continue at the bedside.</span></div>`;
   else if(L==='rec')h+=`<span class="empty-note">Tests and diagnosis happen once they're in a department.</span>`;
   else if(dk==='diag')h+=`<span class="empty-note">Diagnostic departments run tests only. Send them back to a ward to diagnose.</span>`;
   const canStab=['er','icu'].includes(L)&&p.deadline&&c.p==='r'&&p.stab<2;
