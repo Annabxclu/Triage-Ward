@@ -2463,6 +2463,18 @@ let confirmNew=0;
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#chart .med')){const n=document.querySelectorAll('#chart .med input:checked').length;const el=document.getElementById('rxSel');if(el)el.textContent=`${n} selected`}});
 document.addEventListener('input',e=>{if(e.target.id==='bandPick'){bandColor=e.target.value;try{localStorage.setItem('hospital-band',bandColor)}catch(err){}applyBand();document.querySelectorAll('.sw.on').forEach(x=>x.classList.remove('on'))}});
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#setupSignIn')){e.preventDefault();cloudSignIn()}});
+/* phones only: swipe a patient chart to the right to close it (the × still works) */
+(function(){let sx=0,sy=0,dx=0,mode=null,el=null;const phone=()=>matchMedia('(max-width:600px)').matches;
+  document.addEventListener('touchstart',e=>{el=document.getElementById('chart');if(!phone()||!el||el.hidden||!el.contains(e.target)||e.touches.length!==1){mode=null;return}
+    if(e.target.closest('input,select,textarea'))return;const t=e.touches[0];sx=t.clientX;sy=t.clientY;dx=0;mode='wait'},{passive:true});
+  document.addEventListener('touchmove',e=>{if(!mode||!el)return;const t=e.touches[0],mx=t.clientX-sx,my=t.clientY-sy;
+    if(mode==='wait'){if(Math.abs(mx)>12&&Math.abs(mx)>Math.abs(my)*1.5&&mx>0){mode='swipe';el.style.transition='none'}else if(Math.abs(my)>12){mode=null;return}else return}
+    dx=Math.max(0,mx);el.style.transform=`translateX(${dx}px)`;el.style.opacity=String(Math.max(.4,1-dx/(el.offsetWidth*1.4)))},{passive:true});
+  document.addEventListener('touchend',()=>{if(mode!=='swipe'||!el){mode=null;return}mode=null;el.style.transition='transform .2s ease-out,opacity .2s ease-out';
+    if(dx>Math.min(110,el.offsetWidth*.28)){el.style.transform='translateX(100%)';el.style.opacity='0';setTimeout(()=>{el.style.transition='';el.style.transform='';el.style.opacity='';if(S){S.pid=null;render()}},200)}
+    else{el.style.transform='';el.style.opacity='';setTimeout(()=>{el.style.transition=''},220)}});
+  document.addEventListener('touchcancel',()=>{if(el){el.style.transform='';el.style.opacity='';el.style.transition=''}mode=null});
+})();
 document.addEventListener('click',e=>{const dl=document.getElementById('settingsDlg');if(e.target===dl){dl.close();return}});
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b||!S||b.disabled)return;const a=b.dataset.act;const p=S.pid&&S.P[S.pid];
