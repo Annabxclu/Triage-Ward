@@ -2188,28 +2188,30 @@ function ptArea(p){if(p.loc==='morgue')return 'Morgue';if(p.bay)return 'Trauma b
   if(isICU(p.loc)&&p.stage==='icu')return 'ICU bed';if(isFlow(p.loc)&&p.stage)return {queue:'Queue',tri:'Triage room',wait:'Waiting room',dx:'Diagnostic room'}[p.stage]||'';
   if(DEPT[p.loc]&&DEPT[p.loc].kind==='pharm')return 'Pickup line';if(NAMED_ROLE[p.loc])return 'Testing';return ''}
 function patientsHTML(){
-  const ps=Object.values(S.P).filter(p=>p.loc!=='morgue').sort((a,b)=>(b.collapsed?1:0)-(a.collapsed?1:0)||'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||(a.deadline||1e9)-(b.deadline||1e9)||a.arr-b.arr);
-  const busyN=ps.filter(p=>p.busy).length,idleN=ps.filter(p=>!p.busy&&!(p.adm&&!p.adm.ready&&p.adm.until)).length;
+  const all=Object.values(S.P),ps=all.filter(p=>p.loc!=='morgue'||(!p.autopsy&&p.ext)).sort((a,b)=>(b.collapsed?1:0)-(a.collapsed?1:0)||'ryg'.indexOf(cond(a).p)-'ryg'.indexOf(cond(b).p)||(a.deadline||1e9)-(b.deadline||1e9)||a.arr-b.arr);
+  const live=ps.filter(p=>p.loc!=='morgue');const busyN=live.filter(p=>p.busy).length,idleN=live.filter(p=>!p.busy&&!(p.adm&&!p.adm.ready&&p.adm.until)).length,autN=ps.length-live.length;
   let h=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:200">PTS</span><div><h1>Patients</h1>
     <p>Everyone in the hospital right now, sickest first. Click a patient to open their chart.</p></div></div>
-    <div class="ptsum mono"><span><b>${ps.length}</b> in hospital</span><span><b>${busyN}</b> in a test or treatment</span><span class="idle"><b>${idleN}</b> idle</span></div></div>`;
+    <div class="ptsum mono"><span><b>${live.length}</b> in hospital</span>${autN?`<span><b>${autN}</b> awaiting autopsy</span>`:''}<span><b>${busyN}</b> in a test or treatment</span><span class="idle"><b>${idleN}</b> idle</span></div></div>`;
+  const grpOf=p=>p.loc==='morgue'?'path':p.loc;
   if(!ps.length)return h+`<p class="empty-note">No patients in the hospital.</p>`;
   h+=`<div class="line wrap"><button class="btn sm" data-act="ptall" data-v="1">Expand all</button><button class="btn sm" data-act="ptall" data-v="0">Collapse all</button></div>`;
   /* one folding group per department: ER and Pharmacy first, then alphabetical */
-  const top=['er','pharm'],ord=[...new Set(ps.map(p=>p.loc))].sort((a,b)=>{const ia=top.indexOf(a),ib=top.indexOf(b);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return (DEPT[a]?DEPT[a].name:a).localeCompare(DEPT[b]?DEPT[b].name:b)});
-  ord.forEach(dv=>{const grp=ps.filter(p=>p.loc===dv),d=DEPT[dv],k='pt:'+dv,shut=staffShut.has(k);const need=grp.filter(p=>needsAction(p)).length,col=grp.filter(p=>p.collapsed).length;
+  const top=['er','pharm'],ord=[...new Set(ps.map(grpOf))].sort((a,b)=>{const ia=top.indexOf(a),ib=top.indexOf(b);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return (DEPT[a]?DEPT[a].name:a).localeCompare(DEPT[b]?DEPT[b].name:b)});
+  ord.forEach(dv=>{const grp=ps.filter(p=>grpOf(p)===dv),d=DEPT[dv],k='pt:'+dv,shut=staffShut.has(k);const need=grp.filter(p=>needsAction(p)).length,col=grp.filter(p=>p.collapsed).length;
   h+=`<section class="ptgrp${shut?' shut':''}"><div class="ptgh"><button class="rgt" data-act="rgtoggle" data-k="${k}" aria-expanded="${!shut}" aria-label="${shut?'Show':'Hide'} ${esc(d?d.name:dv)} patients"><span class="car" aria-hidden="true"></span></button>
     <button class="stname" data-act="view" data-v="${dv}">${d?`<span class="badge" style="--h:${d.hue}">${d.code}</span>`:''}<b>${esc(d?d.name:dv)}</b></button>
-    <span class="cap mono">${grp.length} patient${grp.length===1?'':'s'}</span>${need?`<span class="ptneed">${need} need${need===1?'s':''} you</span>`:''}${col?`<span class="colbadge">⚠ ${col} collapsed</span>`:''}</div>
+    <span class="cap mono">${dv==='path'?`${grp.length} autopsy request${grp.length===1?'':'s'}`:`${grp.length} patient${grp.length===1?'':'s'}`}</span>${need?`<span class="ptneed">${need} need${need===1?'s':''} you</span>`:''}${col?`<span class="colbadge">⚠ ${col} collapsed</span>`:''}</div>
   <div class="ptlist" role="table" aria-label="${esc(d?d.name:dv)} patients"><div class="ptrow pthead" role="row"><span role="columnheader">Patient</span><span role="columnheader">Department</span><span role="columnheader">Status</span><span role="columnheader">Time left</span></div>`;
   grp.forEach(p=>{const c=cond(p);const [st]=ptStatus(p);const d=DEPT[p.loc];const rec=p.adm&&!p.adm.ready&&p.adm.until;
     let stat;if(p.busy){const lbl=p.busy.k==='exam'?EXAMS[p.busy.x].name:p.busy.k==='treat'?'Treatment: '+c.tx[0]:p.busy.k==='surg'?'Surgery: '+c.tx[0]:p.busy.k==='stab'||p.busy.k==='stabT'?'Stabilizing':'Autopsy';
       stat=`<span class="pst run"><span class="dot"></span>${esc(lbl)}</span><span class="psub mono" data-bzt="${p.id}"></span>`}
     else if(rec)stat=`<span class="pst rec"><span class="dot"></span>${isObs(p.adm.d)?'In observation':'Recovering'}</span><span class="psub mono" data-admt="${p.id}"></span>`;
+    else if(p.loc==='morgue')stat=`<span class="pst idle"><span class="dot"></span>Awaiting autopsy</span><span class="psub">${esc(p.ins)} · ${fmt$(AUT_FEE)}</span>`;
     else stat=`<span class="pst idle"><span class="dot"></span>Idle</span><span class="psub">${st}</span>`;
     h+=`<button class="ptrow ${S.pid===p.id?'sel':''} ${p.collapsed?'collapsed':''}" role="row" data-act="pt" data-pid="${p.id}">
       <span class="pc" role="cell"><span class="tri ${c.p}"></span><span><b class="pname pr-${c.p}">${esc(pname(p))}</b>${p.collapsed?' <span class="colbadge">⚠ Collapsed</span>':''}${p.vip?' <span class="vipb">★ VIP</span>':''}<span class="psub">${p.age} ${p.sex==='f'?'F':'M'} · ${esc(p.ins)}</span></span></span>
-      <span class="pc" role="cell"><span class="pdept">${d?esc(d.name):esc(p.loc)}</span><span class="psub">${esc(ptArea(p))}</span></span>
+      <span class="pc" role="cell"><span class="pdept">${p.loc==='morgue'?'Pathology':d?esc(d.name):esc(p.loc)}</span><span class="psub">${esc(ptArea(p))}</span></span>
       <span class="pc" role="cell">${stat}</span>
       <span class="pc mono" role="cell">${p.deadline?`<span data-dlt="${p.id}"></span>`:'<span class="psub">—</span>'}</span></button>`});
   h+='</div></section>'});
@@ -2536,7 +2538,7 @@ document.addEventListener('click',e=>{
     case 'sound':soundOn=!soundOn;try{localStorage.setItem('hospital-sound',soundOn?'1':'0')}catch(e){}soundUI();if(soundOn){lastChime=0;chime('g')}toast(soundOn?'Arrival sound on':'Arrival sound off');break;
     case 'pause':if(S.speed){S.lastSpeed=S.speed;S.speed=0}else S.speed=S.lastSpeed||1;break;
     case 'speed':{const cur=S.speed||S.lastSpeed||1;const nx=SPEEDS[(SPEEDS.indexOf(cur)+1)%SPEEDS.length];S.lastSpeed=nx;if(S.speed)S.speed=nx;toast(`Speed ${nx}×: 1 game minute every ${15/nx} seconds`);break}
-    case 'ptall':{const locs=new Set(Object.values(S.P).map(p=>p.loc));locs.forEach(l=>{const k='pt:'+l;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
+    case 'ptall':{const locs=new Set(Object.values(S.P).map(p=>p.loc==='morgue'?'path':p.loc));locs.forEach(l=>{const k='pt:'+l;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'instoggle':{const id=b.dataset.i;S.insOff=S.insOff||{};const turningOff=!S.insOff[id];if(turningOff&&insActive().length<=1){toast('Keep at least one insurance plan switched on, or use Intake off to stop walk-ins.','warn');return}
       if(turningOff)S.insOff[id]=true;else delete S.insOff[id];S.next=S.t+nextGap();toast(`${INS_BY[id].n} ${turningOff?'paused':'switched on'} · now ${perDay()} patients/day`);break}
     case 'stall':{DEPTS.forEach(d=>{const k='st:'+d.id;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
