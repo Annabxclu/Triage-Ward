@@ -51,7 +51,7 @@ Open **Settings → Sign in with Google** on the GitHub site to save your hospit
 
 ## Sound
 
-A soft chime plays whenever a new patient arrives; red patients get a quicker three-note alert. The speaker button next to the hospital name turns it off or on, and the choice is remembered.
+A soft chime plays whenever a new patient arrives; red patients get a quicker three-note alert. A different, softer falling tone plays when a patient becomes **idle** (a test or stay finished and they're waiting for you); it has its own switch in Settings. The speaker button next to the hospital name turns it off or on, and the choice is remembered.
 
 ## Saving and pausing
 The game saves itself to your browser every few seconds. Switching tabs, minimizing, locking your screen or closing the page pauses the hospital; it resumes when you come back. Saves live in each browser separately, so the Claude version and the GitHub version keep separate hospitals.

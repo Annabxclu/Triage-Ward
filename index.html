@@ -539,6 +539,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   <div class="sethead"><h2 id="setTitle">Settings</h2><button class="btn sm" data-act="setclose" aria-label="Close settings">✕</button></div>
   <section class="setrow col"><div><b>Account</b></div><div id="acctBox"></div></section>
   <section class="setrow"><div><b>Sandbox mode</b><p>Tools for trying things out: add money, unlock or staff every department, skip time, add any patient.</p></div><button class="tgl" data-act="testmode" id="testBtn" role="switch" aria-checked="false"><span></span></button></section>
+  <section class="setrow"><div><b>Idle sound</b><p>A soft low tone when a patient finishes a test or stay and is waiting for you.</p></div><button class="tgl" data-act="idlesound" id="idleTgl" role="switch" aria-checked="true"><span></span></button></section>
   <section class="setrow"><div><b>Arrival sound</b><p>Chime when a new patient arrives. Red patients get a quicker alert.</p></div><button class="tgl" data-act="sound" id="soundTgl" role="switch" aria-checked="true"><span></span></button></section>
   <section class="setrow col"><div><b>Top bar color</b><p>Pick a color for the bar across the top of the screen.</p></div>
     <div class="swatches" id="swatches"></div></section>
@@ -1678,10 +1679,16 @@ function applyBand(){if(typeof document==='undefined')return;const r=document.do
 function swatchesHTML(){const cur=bandColor||'';return BANDS.map(([n,c])=>`<button class="sw ${cur===c||(!cur&&c==='#13232a')?'on':''}" data-act="band" data-c="${c}" style="--c:${c}" aria-label="${n}" title="${n}"><span></span>${n}</button>`).join('')+
   `<label class="sw custom" title="Custom color"><input type="color" id="bandPick" value="${cur||'#13232a'}" aria-label="Custom top bar color"><span>Custom</span></label><button class="btn sm" data-act="band" data-c="">Reset</button>`}
 function settingsUI(){const d=document.getElementById('settingsDlg');if(!d)return;cloudUI();const t=document.getElementById('testBtn');if(t&&S)t.setAttribute('aria-checked',S.test?'true':'false');
-  const st=document.getElementById('soundTgl');if(st)st.setAttribute('aria-checked',soundOn?'true':'false');document.getElementById('swatches').innerHTML=swatchesHTML()}
+  const st=document.getElementById('soundTgl');if(st)st.setAttribute('aria-checked',soundOn?'true':'false');const it=document.getElementById('idleTgl');if(it)it.setAttribute('aria-checked',idleSoundOn?'true':'false');document.getElementById('swatches').innerHTML=swatchesHTML()}
 applyBand();
 let soundOn=true;try{soundOn=localStorage.getItem('hospital-sound')!=='0'}catch(e){}
-let actx=null,lastChime=0,chimeQ=null;
+let actx=null,lastChime=0,chimeQ=null,lastIdle=0;
+let idleSoundOn=true;try{idleSoundOn=localStorage.getItem('hospital-idle-sound')!=='0'}catch(e){}
+/* idle sound: a soft low two-note 'bloop' (falling), distinct from the rising arrival chime */
+function idleChime(){if(!idleSoundOn)return;const now=performance.now();if(now-lastIdle<1500||now-lastChime<500)return;lastIdle=now;
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();const t0=actx.currentTime+.02;
+    [[587,0],[440,.16]].forEach(([fq,dt])=>{const o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=fq;
+      g.gain.setValueAtTime(0,t0+dt);g.gain.linearRampToValueAtTime(.14,t0+dt+.03);g.gain.exponentialRampToValueAtTime(.001,t0+dt+.45);o.connect(g).connect(actx.destination);o.start(t0+dt);o.stop(t0+dt+.5)})}catch(e){}}
 function chime(pr){if(!soundOn)return;const now=performance.now();if(pr!=='amb'&&now-lastChime<400){if(pr==='r')chimeQ='r';return}lastChime=now;
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();
     const notes=pr==='amb'?[[960,0],[720,.22],[960,.44],[720,.66]]:pr==='r'?[[880,0],[880,.16],[1175,.32]]:[[660,0],[880,.14]];const t0=actx.currentTime+.02;
@@ -2006,6 +2013,8 @@ function step(dt){
   Object.values(S.P).forEach(p=>{if(p.tech&&p.techAuto&&!p.busy&&!(p.tq&&p.tq.length)){const x=staffById(p.tech);p.tech=null;p.techAuto=false;p.v++;dirty=true;
     log(`${staffName(x)} finished ${pname(p)}'s ordered tests.`,'good')}});
   autoRoute();
+  /* play the idle sound when a patient goes from being worked on to waiting for you */
+  {let became=false;Object.values(S.P).forEach(p=>{const n=needsAction(p);if(p.wasIdle===false&&n)became=true;p.wasIdle=n});if(became)idleChime()}
 }
 
 /* ================= RENDER ================= */
@@ -2508,6 +2517,7 @@ document.addEventListener('click',e=>{
     case 'cloudin':cloudSignIn();return;
     case 'cloudout':cloudSignOut();return;
     case 'cloudsync':save();cloudPush(true);return;
+    case 'idlesound':idleSoundOn=!idleSoundOn;try{localStorage.setItem('hospital-idle-sound',idleSoundOn?'1':'0')}catch(e){}settingsUI();if(idleSoundOn){lastIdle=0;idleChime()}toast(idleSoundOn?'Idle sound on':'Idle sound off');return;
     case 'setclose':document.getElementById('settingsDlg').close();return;
     case 'band':bandColor=b.dataset.c||null;try{if(bandColor)localStorage.setItem('hospital-band',bandColor);else localStorage.removeItem('hospital-band')}catch(e){}applyBand();settingsUI();return;
     case 'tmoney':S.money+=+b.dataset.n;toast(`Added ${fmt$(+b.dataset.n)}.`);break;
