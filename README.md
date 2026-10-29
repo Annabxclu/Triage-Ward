@@ -26,6 +26,12 @@ Open **Settings** in the top bar to change the top bar color, turn the arrival s
 
 Patients arrive at random through the day. How many come is set by the insurance plans you accept: you start with five (Uninsured, Unity Health, Harbor Mutual, Cygnet Care, Bluepoint Shield) for about 100 patients per game day. The **Insurance** page lists all 19 plans. Each locked plan has a challenge, such as treating 30 patients in the ER for StateCare; finish it and the plan unlocks for free, adding its patients per day. A new patient's insurance is drawn from your accepted plans in proportion to the patients each one sends.
 
+## Ambulances, trauma bays and hospitalization
+
+A few times a game day an **ambulance** brings a critical patient (heart attack, gunshot wound, stroke and so on) straight to the ER's **trauma bays** (2 to start, $6,000 each up to 6). They arrive collapsing with about 20 game minutes to live; a free ER doctor stabilizes them automatically, then works them up like a diagnostic room. If every bay is full, the ambulance is diverted. Turning intake off also diverts ambulances.
+
+Departments now have **hospital beds** instead of recovery beds. Besides recovery after treatment or surgery, a doctor can **Hospitalize for tests** from a diagnostic room: the patient moves to a bed, their clock stops, and the ward doctor keeps running tests at the bedside (blood goes to the Lab, imaging is portable), diagnoses and treats there. Each ward needs **1 nurse per 4 occupied beds**; when it's short, hospitalized patients can collapse and need a doctor to stabilize them.
+
 ## Surgery
 
 About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, craniotomy, fracture fixation and so on). Once a doctor confirms one, the chart shows **Admit for surgery** instead of Start treatment. Admitting moves the patient to a recovery bed in that department. When an **operating room** ($10,000, up to 4 per department; the Emergency Room does not do surgery), a **surgeon** ($2,500 to hire), an **anesthesiologist** ($2,000 to hire) and a nurse are all free, the team operates automatically, then the patient recovers in the bed and is discharged as usual. Red patients stay critical until surgery starts.
