@@ -32,6 +32,10 @@ A few times a game day an **ambulance** brings a critical patient (heart attack,
 
 Departments now have **hospital beds** instead of recovery beds. Besides recovery after treatment or surgery, a doctor can **Hospitalize for tests** from a diagnostic room: the patient moves to a bed, their clock stops, and the ward doctor keeps running tests at the bedside (blood goes to the Lab, imaging is portable), diagnoses and treats there. Some treatments **require hospitalization first**: every non-surgical case with a stay (about 190, like pneumonia, meningitis or a heart failure flare) must be hospitalized before the doctor can treat it, then recovers in the same bed. Each ward needs **1 nurse per 4 occupied beds**; when it's short, hospitalized patients can collapse and need a doctor to stabilize them.
 
+## Pathology autopsy requests
+
+With **Pathology** open, about 3 times a game day a coroner, family, the police, a medical examiner or an insurer sends a body for an autopsy. A pathologist performs it (30 game minutes) for a **$1,500 fee**, and the cause of death goes into your Casebook. Requests expire after one game day. Patients who die in your own hospital still come to the morgue too ($600 county fee).
+
 ## Surgery
 
 About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, craniotomy, fracture fixation and so on). Once a doctor confirms one, the chart shows **Admit for surgery** instead of Start treatment. Admitting moves the patient to a recovery bed in that department. When an **operating room** ($10,000, up to 4 per department; the Emergency Room does not do surgery), a **surgeon** ($2,500 to hire), an **anesthesiologist** ($2,000 to hire) and a nurse are all free, the team operates automatically, then the patient recovers in the bed and is discharged as usual. Red patients stay critical until surgery starts.

@@ -1498,6 +1498,17 @@ function insTick(){if(!S.ins)insInit();INS.forEach(i=>{if(S.ins[i.id]||!i.goal)r
   if(v>=n){S.ins[i.id]=true;dirty=true;log(`New insurance accepted: ${i.n}. +${i.day} patients per day (now ${perDay()}).`,'good');toast(`🎉 ${i.n} unlocked · +${i.day} patients/day`,'good')}})}
 /* random arrivals: exponential gaps averaging the daily total over a 1,440-minute game day */
 /* ambulances: a few per game day, the most serious cases */
+/* outside autopsy requests: a few bodies per game day sent to Pathology by a coroner, family or police */
+const AUT_PER_DAY=3, AUT_FEE=1500, AUT_WAIT=1440;
+const AUT_SRC=['County coroner','Family request','Police investigation','Medical examiner','Insurance claim'];
+function autGap(){return -Math.log(1-Math.random())*1440/AUT_PER_DAY}
+function autopsyRequest(){if(!S.depts.path.on||S.morgue.length>=QMAX)return;
+  const pool=CONDS.filter(c=>!c.appt&&!c.cos&&c.p!=='g');const c=wpick(pool,x=>(x.p==='r'?3:1)*(x.rare?.35:1));const ci=CONDS.indexOf(c);
+  const sex=c.sx||(Math.random()<.5?'f':'m');const src=pick(AUT_SRC);
+  const rev=[];c.F.forEach((f,i)=>{if(f.pres)rev.push(i)});
+  const id='p'+(S.seq++);const p={id,first:pick(sex==='f'?FIRST_F:FIRST_M),last:pick(LAST),age:rnd(c.a[0],c.a[1]),sex,ins:src,cov:1,c:ci,rev,res:{},loc:'morgue',inW:false,
+    arr:S.t,deadline:S.t+AUT_WAIT,span:AUT_WAIT,busy:null,dx:null,bill:0,stab:0,from:null,v:0,ext:true};
+  S.P[id]=p;S.morgue.push(id);dirty=true;log(`${src}: ${pname(p)} was sent to Pathology for an autopsy (${fmt$(AUT_FEE)} fee).`);toast(`⚰ Autopsy request from ${src.toLowerCase()}`)}
 function ambGap(){return -Math.log(1-Math.random())*1440/AMB_PER_DAY}
 function ambCase(){const pool=CONDS.filter(c=>c.p==='r'&&!c.appt&&!c.cos&&c.t.some(t=>t==='er'||(S.depts[t]&&S.depts[t].on)));return CONDS.indexOf(wpick(pool,c=>c.rare?.35:1))}
 function nextGap(){const e=evtNow();const rate=perDay()/1440*(1+(e&&e.rate?e.rate:0));return -Math.log(1-Math.random())/Math.max(rate,1e-6)}
@@ -1922,7 +1933,7 @@ function complete(p){
   else if(b.k==='surg'){finishSurg(p)}
   else if(b.k==='stabT'){finishStabT(p)}
   else if(b.k==='stab'){p.stab++;p.bill+=400;if(p.deadline){p.deadline+=25;p.span+=25}log(`${pname(p)} stabilized: +25 minutes.`,'good')}
-  else if(b.k==='autopsy'){p.autopsy=true;learn(c);S.money+=600;S.st.revenue+=600;log(`Autopsy: ${pname(p)} died of ${c.n}. +$600 county fee.`)}
+  else if(b.k==='autopsy'){const fee=p.ext?AUT_FEE:600;p.autopsy=true;p.deadline=null;learn(c);S.money+=fee;S.st.revenue+=fee;S.st.autopsies=(S.st.autopsies||0)+1;log(`Autopsy: ${pname(p)} died of ${c.n}. +${fmt$(fee)} ${p.ext?p.ins.toLowerCase()+' fee':'county fee'}.`,'good');toast(`Autopsy done · +${fmt$(fee)}`,'good')}
 }
 
 /* ---------- simulation ---------- */
@@ -1947,6 +1958,8 @@ function step(dt){
   while(!S.intakeOff&&S.t>=S.next){arrive();S.next+=nextGap()}
   if(S.ambNext==null)S.ambNext=S.t+ambGap();
   if(S.intakeOff)S.ambNext+=dt;else while(S.t>=S.ambNext){arrive(ambCase(),true);S.ambNext+=ambGap()}
+  if(S.autNext==null)S.autNext=S.t+autGap();
+  if(S.intakeOff||!S.depts.path.on)S.autNext+=dt;else while(S.t>=S.autNext){autopsyRequest();S.autNext+=autGap()}
   const today=new Date().toDateString();if(!S.payDate)S.payDate=today;
   if(today!==S.payDate){S.payDate=today}
   for(const id of Object.keys(S.P)){const p=S.P[id];if(!p)continue;
@@ -1956,6 +1969,7 @@ function step(dt){
       if(rate&&Math.random()<1-Math.pow(1-rate,dt)){p.collapsed=true;p.deadline=Math.min(p.deadline,S.t+15);p.v++;dirty=true;
         const where=p.loc==='rec'?'Reception':`${DEPT[p.loc].name}${p.stage?' · '+(stageName(p)||''):''}`;
         log(`${pname(p)} collapsed in ${where}. Get them to the ICU or treat now.`,'bad');toast(`⚠ ${p.first} ${p.last} collapsed in ${where}!`,'bad')}}
+    if(p.loc==='morgue'){if(p.ext&&!p.autopsy&&!p.busy&&p.deadline&&S.t>=p.deadline){log(`${p.ins} withdrew the autopsy request for ${pname(p)}. It waited too long.`,'warn');gone(p)}continue}
     if(p.deadline&&S.t>=p.deadline&&!(p.busy&&(p.busy.k==='treat'||p.busy.k==='surg'||p.busy.k==='stabT'))){if(cond(p).p==='r'||p.collapsed)die(p);else leave(p);continue}
     if(p.adm&&!p.collapsed&&!p.busy&&!isICU(p.loc)&&wardShort(p.adm.d)){const pr=cond(p).p,rate=(pr==='r'?1/240:pr==='y'?1/900:1/3000)*wardShort(p.adm.d);
       if(Math.random()<1-Math.pow(1-rate,dt)){p.collapsed=true;p.deadline=S.t+20;p.v++;dirty=true;log(`${pname(p)} collapsed in a ${DEPT[p.adm.d].name} bed. Not enough nurses watching the ward.`,'bad');toast(`⚠ ${p.first} ${p.last} collapsed in ${DEPT[p.adm.d].name}: short on nurses!`,'bad')}}
@@ -2241,7 +2255,7 @@ function renderMain(){
       const ex=EXAM_ORDER.filter(x=>Array.isArray(EXAMS[x].depts)&&EXAMS[x].depts.includes(v));
       if(d.kind!=='pharm'&&d.kind!=='path')h+=`<div class="tests"><span>Tests here:</span>${d.kind==='clinic'?'<span class="chip">Basic exams</span>':''}${ex.map(x=>`<span class="chip">${esc(EXAMS[x].name)}</span>`).join('')}</div>`;
       if(d.kind==='path'){
-        h+=`<section class="zone"><div class="zone-h"><h2>Morgue</h2><span class="cap">${S.morgue.length}/${QMAX}</span><span class="note">Urgent patients who run out of time end up here.</span></div>${slots(S.morgue,QMAX,'Drawer')}</section>`;
+        h+=`<section class="zone"><div class="zone-h"><h2>Morgue</h2><span class="cap">${S.morgue.length}/${QMAX}</span><span class="note">Patients who die here end up in the morgue. Coroners, families and the police also send bodies for autopsy, about ${AUT_PER_DAY} a day, paying ${fmt$(AUT_FEE)} each if you finish before the request expires.</span></div>${slots(S.morgue,QMAX,'Drawer')}</section>`;
       } else {
         h+=`<section class="zone"><div class="zone-h"><h2>${d.kind==='pharm'?'Pickup line':'Department queue'}</h2><span class="cap">${D.q.length}/${QMAX}</span></div>${slots(D.q,QMAX,'Seat')}</section>
         ${d.kind==='pharm'?'':`<section class="zone"><div class="zone-h"><h2>Waiting room</h2><span class="cap">${D.w.length}/${WMAX}</span><span class="note">Overflow. They move up when a seat in the queue opens.</span></div>${slots(D.w,WMAX,'Seat')}</section>`}`;
@@ -2277,7 +2291,8 @@ function chartHTML(p){
    ${p.deadline?`<span class="tag mono ${c.p}" data-dlt="${p.id}"></span>`:''}</div></div>`;
 
   if(L==='morgue'){
-    h+=`<div class="sec"><h3>Recorded complaint</h3><ul class="findings">${c.F.filter(f=>f.pres).map(f=>`<li>${esc(f.l)}</li>`).join('')}</ul></div>`;
+    if(p.ext)h+=`<div class="sec"><div class="callout"><b>Outside request:</b> ${esc(p.ins)}. Pays ${fmt$(AUT_FEE)}.${p.autopsy?'':` Expires in <span class="mono" data-dlt="${p.id}"></span>.`}</div></div>`;
+    h+=`<div class="sec"><h3>${p.ext?'Reported history':'Recorded complaint'}</h3><ul class="findings">${c.F.filter(f=>f.pres).map(f=>`<li>${esc(f.l)}</li>`).join('')}</ul></div>`;
     if(p.busy)h+=busyBox(p);
     else if(p.autopsy)h+=`<div class="sec"><div class="callout"><b>Cause of death:</b> ${esc(c.n)}. Treated in ${esc(c.t.map(t=>DEPT[t].name).join(' or '))}.</div>
       <ul class="findings">${c.F.map(f=>`<li>${esc(f.l)}<span class="src">${esc(EXAMS[f.x].name)}</span></li>`).join('')}</ul>
@@ -2419,7 +2434,7 @@ function tickUI(){
     else if(p.deadline){el.style.width=Math.max(0,(p.deadline-S.t)/p.span*100)+'%'}});
   document.querySelectorAll('[data-dlt]').forEach(el=>{const p=S.P[el.dataset.dlt];if(!p||!p.deadline)return;const r=Math.max(0,Math.ceil(p.deadline-S.t));
     const ps=isICU(p.loc);el.textContent=el.classList.contains('tag')?`${ps?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'} ${fmtDur(r)}`:fmtDur(r);el.classList.toggle('urgent',r<=10&&!ps);el.classList.toggle('paused',ps)});
-  document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=`${isICU(p.loc)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
+  document.querySelectorAll('[data-dlw]').forEach(el=>{const p=S.P[el.dataset.dlw];if(!p)return;el.textContent=p.loc==='morgue'?'Request expires in':`${isICU(p.loc)?'Paused · ':''}${cond(p).p==='r'?'Critical in':'Leaves in'}`});
   document.querySelectorAll('[data-admt]').forEach(el=>{const p=S.P[el.dataset.admt];if(!p||!p.adm)return;el.textContent=fmtCountdown(p.adm.until-S.t)});
   document.querySelectorAll('[data-bzt]').forEach(el=>{const p=S.P[el.dataset.bzt];if(!p||!p.busy)return;el.textContent=fmtCountdown(p.busy.end-S.t)});
 }
