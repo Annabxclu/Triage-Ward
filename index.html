@@ -246,6 +246,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .inscard{border:1px dashed var(--line);background:var(--panel);border-radius:8px;padding:10px 12px;display:grid;gap:6px;align-content:start}
 .inscard.on{border-style:solid;border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
 .insh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.inscard.paused{opacity:.7}.inscard .tgl{margin-left:8px}.insh{flex-wrap:nowrap}.insh b{flex:1}
 .insok{color:var(--green);font-size:12px;font-weight:700}.inslock{color:var(--muted);font-size:12px;font-weight:700}
 .insm{display:flex;gap:4px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .insc{font-size:13px}.insc.done{color:var(--muted);font-size:12px}
@@ -436,6 +437,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));justify-content:space-between;gap:8px 10px;width:100%}
   .meter small{font-size:9.5px;letter-spacing:.08em}
   .meter b{font-size:14px}
+  .meter small .lg{display:none}
   .meter b span{white-space:nowrap}
   .meters .menu{grid-column:span 1;padding:6px 4px;font-size:13px;text-align:center;min-height:36px}
   .meters #pauseBtn{grid-column:1}
@@ -517,6 +519,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
       <div class="meter"><small>Clock</small><b id="clock">—</b></div>
       <div class="meter"><small>Funds</small><b id="money">—</b></div>
       <div class="meter"><small>Patients</small><b id="ptCount">—</b></div>
+      <div class="meter" title="Patients treated today out of the patients your active insurance plans send per day"><small><span class="lg">Treated </span>today</small><b id="todayCt">—</b></div>
       <div class="meter"><small>Next arrival</small><b id="nextArr">—</b></div>
       <button class="menu" data-act="pause" id="pauseBtn">Pause</button>
       <button class="menu" data-act="speed" id="speedBtn" title="Game speed: 1× = 1 game minute every 15 seconds">Speed 1×</button>
@@ -1486,7 +1489,9 @@ const INS_BY=Object.fromEntries(INS.map(i=>[i.id,i]));
 function insInit(){if(!S.ins){S.ins={};INS.forEach(i=>{if(i.start)S.ins[i.id]=true})}
   if(!S.st.treatBy)S.st.treatBy={};['old','kids','bedDis','rx','surg','streak','bestStreak'].forEach(k=>{if(S.st[k]==null)S.st[k]=0})}
 const insOn=()=>INS.filter(i=>S.ins&&S.ins[i.id]);
-const perDay=()=>insOn().reduce((n,i)=>n+i.day,0);
+/* accepted plans you have switched on: these set how many patients come each day */
+const insActive=()=>insOn().filter(i=>!(S.insOff&&S.insOff[i.id]));
+const perDay=()=>insActive().reduce((n,i)=>n+i.day,0);
 function insProgress(i){const g=i.goal;if(!g)return [1,1];const st=S.st;let v=0;
   if(g.k==='treatIn')v=g.d.reduce((n,d)=>n+((st.treatBy||{})[d]||0),0);
   else if(g.k==='streak')v=Math.max(st.bestStreak||0,st.streak||0);
@@ -1514,8 +1519,8 @@ function autopsyRequest(){if(!S.depts.path.on||S.morgue.length>=QMAX)return;
 function ambGap(){return -Math.log(1-Math.random())*1440/AMB_PER_DAY}
 function ambCase(){const pool=CONDS.filter(c=>c.p==='r'&&!c.appt&&!c.cos&&c.t.some(t=>t==='er'||(S.depts[t]&&S.depts[t].on)));return CONDS.indexOf(wpick(pool,c=>c.rare?.35:1))}
 function nextGap(){const e=evtNow();const rate=perDay()/1440*(1+(e&&e.rate?e.rate:0));return -Math.log(1-Math.random())/Math.max(rate,1e-6)}
-function pickIns(age){const pool=insOn().filter(i=>!i.senior||age>=65);return wpick(pool,i=>i.day)}
-function countTreat(p,d){const st=S.st;if(!st.treatBy)insInit();st.treatBy[d]=(st.treatBy[d]||0)+1;if(p.age>=65)st.old++;if(p.age<16)st.kids++}
+function pickIns(age){let pool=insActive().filter(i=>!i.senior||age>=65);if(!pool.length)pool=insOn().filter(i=>!i.senior||age>=65);return pool.length?wpick(pool,i=>i.day):INS[0]}
+function countTreat(p,d){const st=S.st;const gd=gameDay(S.t);if(S.todayDay!==gd){S.todayDay=gd;S.todayTreated=0}S.todayTreated++;if(!st.treatBy)insInit();st.treatBy[d]=(st.treatBy[d]||0)+1;if(p.age>=65)st.old++;if(p.age<16)st.kids++}
 
 
 /* ================= STATE ================= */
@@ -2205,10 +2210,11 @@ function staffLink(v){const D=S.depts[v];
   return `<div class="stlink"><b>Staff</b>${parts.join('<span class="sep">·</span>')}<button class="btn sm" data-act="view" data-v="staff">Manage staff</button></div>`}
 function insHTML(){const on=insOn(),pd=perDay();
   let h=`<div class="dhead"><div class="dtitle"><span class="badge" style="--h:45">INS</span><div><h1>Insurance</h1>
-    <p>Every plan you accept sends more patients each game day. Unlock new plans for free by completing their challenges.</p></div></div>
-    <div class="ptsum mono"><span><b>${pd}</b> patients per day</span><span><b>${on.length}</b> of ${INS.length} plans accepted</span><span>about 1 every <b>${fmtDur(Math.round(1440/pd))}</b></span></div></div><div class="inslist">`;
+    <p>Every plan you accept sends more patients each game day. Unlock new plans for free by completing their challenges, and switch accepted plans on or off to control how busy you are.</p></div></div>
+    <div class="ptsum mono"><span><b>${pd}</b> patients per day</span><span><b>${on.length}</b> of ${INS.length} plans unlocked</span><span><b>${insActive().length}</b> switched on</span><span>about 1 every <b>${fmtDur(Math.round(1440/pd))}</b></span></div></div><div class="inslist">`;
   INS.forEach(i=>{const ok=S.ins[i.id];const [v,n]=insProgress(i);const pct=Math.round(v/n*100);
-    h+=`<div class="inscard ${ok?'on':''}"><div class="insh"><b>${esc(i.n)}</b>${ok?'<span class="insok">✓ Accepted</span>':'<span class="inslock">Locked</span>'}</div>
+    const off=ok&&S.insOff&&S.insOff[i.id];
+    h+=`<div class="inscard ${ok?'on':''} ${off?'paused':''}"><div class="insh"><b>${esc(i.n)}</b>${ok?`<span class="${off?'inslock':'insok'}">${off?'Paused':'✓ Accepting'}</span><button class="tgl" data-act="instoggle" data-i="${i.id}" role="switch" aria-checked="${off?'false':'true'}" aria-label="${off?'Start':'Stop'} accepting ${esc(i.n)} patients"><span></span></button>`:'<span class="inslock">Locked</span>'}</div>
       <div class="insm mono"><span>+${i.day} patients/day</span><span>Pays ${Math.round(i.c*100)}% of charges</span>${i.senior?'<span>Patients 65+ only</span>':''}</div>
       ${ok?(i.goal?`<div class="insc done">Unlocked: ${esc(i.txt)}</div>`:'<div class="insc done">Accepted from the start</div>'):`<div class="insc">${esc(i.txt)}</div><div class="insbar"><i style="width:${pct}%"></i></div><div class="insp mono">${i.goal.k==='earn'?fmt$(v)+' / '+fmt$(n):v+' / '+n}</div>`}</div>`});
   return h+'</div>'}
@@ -2440,10 +2446,11 @@ function tickUI(){
   document.getElementById('clock').innerHTML=`<span>Day ${gameDay(S.t)}</span> <span>${gameClock(S.t)}</span>${S.speed?'':' <span>· Paused</span>'}`;
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
   {const el=document.getElementById('earned');if(el){const v=S.st.revenue||0;if(lastEarned!=null&&v>lastEarned)earnFlashUntil=Date.now()+1200;lastEarned=v;el.classList.toggle('up',Date.now()<earnFlashUntil);el.textContent=fmt$(v)}}
+  {const gd=gameDay(S.t);if(S.todayDay!==gd){S.todayDay=gd;S.todayTreated=0}const tc=document.getElementById('todayCt');if(tc)tc.textContent=`${S.todayTreated||0}/${perDay()}`}
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
   document.querySelectorAll('[data-appt]').forEach(el=>{el.textContent=fmtCountdown(+el.dataset.appt-S.t)});
-  document.getElementById('nextArr').textContent=S.intakeOff?'Intake off':fmtCountdown(S.next-S.t);
+  {const left=S.next-S.t;document.getElementById('nextArr').textContent=S.intakeOff?'Intake off':left>=60?`${Math.floor(left/60)}h ${String(Math.floor(left%60)).padStart(2,'0')}m`:fmtCountdown(left)}
   document.querySelectorAll('[data-bar]').forEach(el=>{const p=S.P[el.dataset.bar];if(!p)return;
     if(p.busy){el.style.width=Math.min(100,(S.t-p.busy.start)/(p.busy.end-p.busy.start)*100)+'%'}
     else if(p.adm){el.style.width=Math.min(100,(S.t-p.adm.start)/(p.adm.until-p.adm.start)*100)+'%'}
@@ -2514,6 +2521,8 @@ document.addEventListener('click',e=>{
     case 'pause':if(S.speed){S.lastSpeed=S.speed;S.speed=0}else S.speed=S.lastSpeed||1;break;
     case 'speed':{const cur=S.speed||S.lastSpeed||1;const nx=SPEEDS[(SPEEDS.indexOf(cur)+1)%SPEEDS.length];S.lastSpeed=nx;if(S.speed)S.speed=nx;toast(`Speed ${nx}×: 1 game minute every ${15/nx} seconds`);break}
     case 'ptall':{const locs=new Set(Object.values(S.P).map(p=>p.loc));locs.forEach(l=>{const k='pt:'+l;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
+    case 'instoggle':{const id=b.dataset.i;S.insOff=S.insOff||{};const turningOff=!S.insOff[id];if(turningOff&&insActive().length<=1){toast('Keep at least one insurance plan switched on, or use Intake off to stop walk-ins.','warn');return}
+      if(turningOff)S.insOff[id]=true;else delete S.insOff[id];S.next=S.t+nextGap();toast(`${INS_BY[id].n} ${turningOff?'paused':'switched on'} · now ${perDay()} patients/day`);break}
     case 'stall':{DEPTS.forEach(d=>{const k='st:'+d.id;if(b.dataset.v==='1')staffShut.delete(k);else staffShut.add(k)});try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'rgtoggle':{const k=b.dataset.k;if(staffShut.has(k))staffShut.delete(k);else staffShut.add(k);try{localStorage.setItem('hospital-staff-shut',JSON.stringify([...staffShut]))}catch(e){}break}
     case 'intake':S.intakeOff=!S.intakeOff;log(S.intakeOff?'Walk-in intake closed. Clinic appointments still arrive.':'Walk-in intake reopened.',S.intakeOff?'warn':'good');toast(S.intakeOff?'Intake off: no walk-ins (appointments still arrive)':'Intake on');break;

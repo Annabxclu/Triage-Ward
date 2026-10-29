@@ -24,7 +24,7 @@ Open **Settings** in the top bar to change the top bar color, turn the arrival s
 
 ## Insurance
 
-Patients arrive at random through the day. How many come is set by the insurance plans you accept: you start with five (Uninsured, Unity Health, Harbor Mutual, Cygnet Care, Bluepoint Shield) for about 100 patients per game day. The **Insurance** page lists all 19 plans. Each locked plan has a challenge, such as treating 30 patients in the ER for StateCare; finish it and the plan unlocks for free, adding its patients per day. A new patient's insurance is drawn from your accepted plans in proportion to the patients each one sends.
+Patients arrive at random through the day. How many come is set by the insurance plans you accept: you start with five (Uninsured, Unity Health, Harbor Mutual, Cygnet Care, Bluepoint Shield) for about 100 patients per game day. The **Insurance** page lists all 19 plans. Each locked plan has a challenge, such as treating 30 patients in the ER for StateCare; finish it and the plan unlocks for free, adding its patients per day. Each accepted plan has an on/off switch, so you can pause plans to control how busy the day is. The top bar's **Treated today** shows patients treated this game day against the day's expected total (for example 3/100). A new patient's insurance is drawn from your accepted plans in proportion to the patients each one sends.
 
 ## Ambulances, trauma bays and hospitalization
 
