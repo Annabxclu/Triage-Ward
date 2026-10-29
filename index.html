@@ -13,7 +13,7 @@
   --bg:#edf1f0; --panel:#fbfcfc; --panel2:#e2e9e8; --ink:#13232a; --muted:#56686e; --line:#cdd8d7;
   --accent:#0b7a72; --accent-ink:#ffffff; --accent-soft:#d7ecea;
   --band:#13232a; --band-ink:#eaf3f2; --band-muted:#91a9aa; --band-line:#2a3d44;
-  --red:#c0262d; --red-bg:#fbe8e8; --amber:#985a00; --amber-bg:#fcf0da; --green:#2b7838; --green-bg:#e5f2e7; --idle:#6a46c4;
+  --red:#c0262d; --red-bg:#fbe8e8; --amber:#985a00; --amber-bg:#fcf0da; --green:#2b7838; --green-bg:#e5f2e7; --idle:#6a46c4; --idle-bg:#efe9fb;
   --shadow:0 10px 30px rgba(19,35,42,.18);
   --f-sign:"Barlow Condensed","Arial Narrow",sans-serif;
   --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
@@ -23,13 +23,13 @@
   --bg:#0c1417; --panel:#142025; --panel2:#1b2a30; --ink:#e2ecec; --muted:#8fa3a7; --line:#26383e;
   --accent:#3dc0b3; --accent-ink:#06211e; --accent-soft:#163a38;
   --band:#081013; --band-ink:#e2ecec; --band-muted:#7f9599; --band-line:#1f3036;
-  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b; --idle:#b9a3ff;
+  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b; --idle:#b9a3ff; --idle-bg:#2a2146;
   --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0c1417; --panel:#142025; --panel2:#1b2a30; --ink:#e2ecec; --muted:#8fa3a7; --line:#26383e;
   --accent:#3dc0b3; --accent-ink:#06211e; --accent-soft:#163a38;
   --band:#081013; --band-ink:#e2ecec; --band-muted:#7f9599; --band-line:#1f3036;
-  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b; --idle:#b9a3ff;
+  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b; --idle:#b9a3ff; --idle-bg:#2a2146;
   --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}
 
 [hidden]{display:none!important}
@@ -97,7 +97,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .navi.locked .badge{background:var(--panel2);color:var(--muted)}
 .navi .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .navi .ct{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
-.navi .ct .idle{color:var(--amber);font-weight:700}
+.navi .ct .idle{color:var(--idle);font-weight:700}
 .navi .redct{font-family:var(--f-mono);font-size:11px;color:var(--red);font-weight:600}
 .navi.locked .nm{color:var(--muted)}
 .unlock{border:1px solid var(--line);background:var(--panel);border-radius:4px;font-family:var(--f-mono);font-size:11px;padding:2px 6px}
@@ -206,7 +206,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .ptgh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ptgh .rgt .car{transform:rotate(90deg)}.ptgrp.shut .ptgh .rgt .car{transform:none}
 .ptgrp.shut>.ptlist{display:none}
-.ptneed{font-size:12px;font-weight:700;color:var(--amber);background:var(--amber-bg);border-radius:999px;padding:2px 8px}
+.ptneed{font-size:12px;font-weight:700;color:var(--idle);background:var(--idle-bg);border-radius:999px;padding:2px 8px}
 .ptgrp .ptlist{margin-top:0}
 .ptlist{flex:none;display:grid;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden;margin-top:14px}
 .ptrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,1.5fr) 150px;gap:12px;align-items:center;padding:10px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
@@ -454,7 +454,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
   .wardpick{display:flex!important;align-items:center;gap:8px}
   .wardpick label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);font-family:var(--f-sign);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted)}
   .wardpick select{flex:1;min-width:0;font:inherit;font-size:16px;font-weight:600;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
-  .wardpick .wneed{flex:none;font-size:12px;font-weight:700;color:var(--amber);background:var(--amber-bg);border-radius:999px;padding:4px 8px}
+  .wardpick .wneed{flex:none;font-size:12px;font-weight:700;color:var(--idle);background:var(--idle-bg);border-radius:999px;padding:4px 8px}
   .side>.dirwrap .nav.open-list::-webkit-scrollbar{display:none}
   .side>.dirwrap .navi{padding:6px 10px;gap:6px;font-size:14px;min-height:38px}
   .side>.dirwrap .navi .badge{display:none}
