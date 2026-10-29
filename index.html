@@ -144,6 +144,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .stats div{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 .stats b{font-family:var(--f-mono);color:var(--ink)}
 .stats .earned{grid-column:1 / -1;font-size:13px;color:var(--ink);font-weight:600;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:2px}
+.stats .earntot{grid-column:1 / -1;font-size:11px;color:var(--muted);margin-top:-2px;margin-bottom:2px}.stats .earntot b{font-size:11px}
 .stats .earned b{color:var(--green);font-size:15px;border-radius:4px;padding:0 4px}
 .stats .earned b{transition:background .6s}
 .stats .earned b.up{background:color-mix(in srgb,var(--green) 28%,transparent)}
@@ -1521,6 +1522,9 @@ function ambGap(){return -Math.log(1-Math.random())*1440/AMB_PER_DAY}
 function ambCase(){const pool=CONDS.filter(c=>c.p==='r'&&!c.appt&&!c.cos&&c.t.some(t=>t==='er'||(S.depts[t]&&S.depts[t].on)));return CONDS.indexOf(wpick(pool,c=>c.rare?.35:1))}
 function nextGap(){const e=evtNow();const rate=perDay()/1440*(1+(e&&e.rate?e.rate:0));return -Math.log(1-Math.random())/Math.max(rate,1e-6)}
 function pickIns(age){let pool=insActive().filter(i=>!i.senior||age>=65);if(!pool.length)pool=insOn().filter(i=>!i.senior||age>=65);return pool.length?wpick(pool,i=>i.day):INS[0]}
+/* money earned this game day (shift); resets at midnight game time */
+function dayEarned(){const gd=gameDay(S.t),rev=S.st.revenue||0;if(S.revDay==null){S.revDay=gd;S.revBase=rev}
+  if(S.revDay!==gd){S.lastDayEarned=rev-S.revBase;S.revDay=gd;S.revBase=rev;dirty=true;log(`Shift ended. Earned ${fmt$(S.lastDayEarned)} on Day ${gd-1}.`,'good')}return rev-S.revBase}
 function countTreat(p,d){const st=S.st;const gd=gameDay(S.t);if(S.todayDay!==gd){S.todayDay=gd;S.todayTreated=0}S.todayTreated++;if(!st.treatBy)insInit();st.treatBy[d]=(st.treatBy[d]||0)+1;if(p.age>=65)st.old++;if(p.age<16)st.kids++}
 
 
@@ -2042,7 +2046,8 @@ function renderSide(){
     <button class="unlock" data-act="unlock" data-d="${d.id}" ${S.money<d.cost?'disabled':''}>${fmt$(d.cost)}</button></div>`});
   h+=`</div></details>
   <div class="totals"><h3>Shift totals</h3><div class="stats">
-   <div class="earned">Money earned <b id="earned">${fmt$(S.st.revenue||0)}</b></div>
+   <div class="earned">Earned today <b id="earned">${fmt$(dayEarned())}</b></div>
+   <div class="earntot">All shifts <b id="earnedAll">${fmt$(S.st.revenue||0)}</b>${S.lastDayEarned!=null?` · yesterday <b>${fmt$(S.lastDayEarned)}</b>`:''}</div>
    <div>Treated <b>${S.st.treated}</b></div><div>Transferred <b>${S.st.xfer}</b></div>
    <div>Left <b>${S.st.left}</b></div><div>Died <b>${S.st.died}</b></div>
    <div>Misdiagnosed <b>${S.st.misdx}</b></div><div>Turned away <b>${S.st.away}</b></div></div></div>
@@ -2446,7 +2451,7 @@ let lastEarned=null,earnFlashUntil=0;
 function tickUI(){
   document.getElementById('clock').innerHTML=`<span>Day ${gameDay(S.t)}</span> <span>${gameClock(S.t)}</span>${S.speed?'':' <span>· Paused</span>'}`;
   const mo=document.getElementById('money');mo.textContent=fmt$(S.money);mo.classList.toggle('neg',S.money<0);
-  {const el=document.getElementById('earned');if(el){const v=S.st.revenue||0;if(lastEarned!=null&&v>lastEarned)earnFlashUntil=Date.now()+1200;lastEarned=v;el.classList.toggle('up',Date.now()<earnFlashUntil);el.textContent=fmt$(v)}}
+  {const day=dayEarned(),el=document.getElementById('earned');if(el){const v=S.st.revenue||0;if(lastEarned!=null&&v>lastEarned)earnFlashUntil=Date.now()+1200;lastEarned=v;el.classList.toggle('up',Date.now()<earnFlashUntil);el.textContent=fmt$(day);const ea=document.getElementById('earnedAll');if(ea)ea.textContent=fmt$(v)}}
   {const gd=gameDay(S.t);if(S.todayDay!==gd){S.todayDay=gd;S.todayTreated=0}const tc=document.getElementById('todayCt');if(tc)tc.textContent=`${S.todayTreated||0}/${perDay()}`}
   document.getElementById('ptCount').textContent=Object.values(S.P).filter(p=>p.loc!=='morgue').length;
   document.querySelectorAll('[data-evt]').forEach(el=>{const e=S.evt;el.textContent=e?`${fmtDur(Math.ceil(e.end-S.t))} left`:''});
