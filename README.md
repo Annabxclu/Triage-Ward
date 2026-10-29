@@ -43,6 +43,8 @@ About 100 diagnoses are real operating-room surgeries (appendectomy, C-section, 
 ## ICU and collapses
 Urgent patients left waiting can **collapse**: a red alert bar names the patient and where they are, the department gets a ⚠ badge, and they have 15 minutes. The **ICU** has no queue or rooms, just beds (10 to start, more for $5,000 each). A patient in an ICU bed is stable, so their clock stops (the only place it does) while ICU nurses and doctors work them up, and ICU-treated conditions recover in the same bed.
 
+Every collapsed patient must be **stabilized** before tests or treatment continue. A free doctor or nurse in their department (or ICU) does it automatically, about 8 game minutes with a countdown; any running test pauses and resumes afterward. Departments with no clinical staff (Lab, Radiology, Pharmacy) can't stabilize, so rush those patients to the ICU.
+
 ## Account and cloud save
 
 Open **Settings → Sign in with Google** on the GitHub site to save your hospital and Casebook to your account (Firebase Auth + Firestore, project `triage-ward`). The game saves to your account every 30 seconds while you play and when you leave the page. Signing in on another device loads whichever save is newest. Each person can only read and write their own save.
