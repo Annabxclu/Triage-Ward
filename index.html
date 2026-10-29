@@ -13,7 +13,7 @@
   --bg:#edf1f0; --panel:#fbfcfc; --panel2:#e2e9e8; --ink:#13232a; --muted:#56686e; --line:#cdd8d7;
   --accent:#0b7a72; --accent-ink:#ffffff; --accent-soft:#d7ecea;
   --band:#13232a; --band-ink:#eaf3f2; --band-muted:#91a9aa; --band-line:#2a3d44;
-  --red:#c0262d; --red-bg:#fbe8e8; --amber:#985a00; --amber-bg:#fcf0da; --green:#2b7838; --green-bg:#e5f2e7;
+  --red:#c0262d; --red-bg:#fbe8e8; --amber:#985a00; --amber-bg:#fcf0da; --green:#2b7838; --green-bg:#e5f2e7; --idle:#6a46c4;
   --shadow:0 10px 30px rgba(19,35,42,.18);
   --f-sign:"Barlow Condensed","Arial Narrow",sans-serif;
   --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
@@ -23,13 +23,13 @@
   --bg:#0c1417; --panel:#142025; --panel2:#1b2a30; --ink:#e2ecec; --muted:#8fa3a7; --line:#26383e;
   --accent:#3dc0b3; --accent-ink:#06211e; --accent-soft:#163a38;
   --band:#081013; --band-ink:#e2ecec; --band-muted:#7f9599; --band-line:#1f3036;
-  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b;
+  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b; --idle:#b9a3ff;
   --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0c1417; --panel:#142025; --panel2:#1b2a30; --ink:#e2ecec; --muted:#8fa3a7; --line:#26383e;
   --accent:#3dc0b3; --accent-ink:#06211e; --accent-soft:#163a38;
   --band:#081013; --band-ink:#e2ecec; --band-muted:#7f9599; --band-line:#1f3036;
-  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b;
+  --red:#ff7372; --red-bg:#3a1719; --amber:#f2b64a; --amber-bg:#33260d; --green:#74d082; --green-bg:#16301b; --idle:#b9a3ff;
   --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}
 
 [hidden]{display:none!important}
@@ -201,7 +201,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .log .bad{color:var(--red)} .log .good{color:var(--green)} .log .warn{color:var(--amber)}
 .case .cdesc{margin:6px 0 8px;font-size:13.5px;line-height:1.45;color:var(--ink);font-style:italic}
 .ptsum{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
-.ptsum b{color:var(--ink)}.ptsum .idle b{color:var(--amber)}
+.ptsum b{color:var(--ink)}.ptsum .idle b{color:var(--idle)}
 .ptgrp{flex:none;display:grid;gap:6px}
 .ptgh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ptgh .rgt .car{transform:rotate(90deg)}.ptgrp.shut .ptgh .rgt .car{transform:none}
@@ -221,7 +221,7 @@ details.help ol{padding-left:18px;margin:8px 0 0;display:grid;gap:4px}
 .pdept{font-weight:600}
 .pst{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px}
 .pst .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
-.pst.run{color:var(--accent)}.pst.rec{color:var(--muted)}.pst.idle{color:var(--amber)}
+.pst.run{color:var(--accent)}.pst.rec{color:var(--muted)}.pst.idle{color:var(--idle)}
 .callout.surgcall{background:color-mix(in srgb,var(--accent) 10%,var(--panel));border-color:var(--accent)}
 .warnnote{color:var(--amber)}
 .stcard{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:10px 14px;display:grid;gap:4px;flex:none}
