@@ -2204,8 +2204,8 @@ function patientsHTML(){
   const grpOf=p=>isIdle(p)?'idle':p.loc==='morgue'?'path':p.loc;
   if(!ps.length)return h+`<p class="empty-note">No patients in the hospital.</p>`;
   h+=`<div class="line wrap"><button class="btn sm" data-act="ptall" data-v="1">Expand all</button><button class="btn sm" data-act="ptall" data-v="0">Collapse all</button></div>`;
-  /* idle patients get their own group at the very top; then one folding group per department: ER and Pharmacy first, then alphabetical */
-  const top=['idle','er','pharm'],ord=[...new Set(ps.map(grpOf))].sort((a,b)=>{const ia=top.indexOf(a),ib=top.indexOf(b);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return (DEPT[a]?DEPT[a].name:a).localeCompare(DEPT[b]?DEPT[b].name:b)});
+  /* idle patients get their own group at the very top, then autopsy requests (they wait on you and expire), then ER and Pharmacy, then the rest alphabetically */
+  const top=['idle','path','er','pharm'],ord=[...new Set(ps.map(grpOf))].sort((a,b)=>{const ia=top.indexOf(a),ib=top.indexOf(b);if(ia>=0||ib>=0)return (ia<0?9:ia)-(ib<0?9:ib);return (DEPT[a]?DEPT[a].name:a).localeCompare(DEPT[b]?DEPT[b].name:b)});
   ord.forEach(dv=>{const grp=ps.filter(p=>grpOf(p)===dv),d=DEPT[dv],k='pt:'+dv,shut=staffShut.has(k);const need=grp.filter(p=>needsAction(p)).length,col=grp.filter(p=>p.collapsed).length;
   h+=`<section class="ptgrp${shut?' shut':''}"><div class="ptgh"><button class="rgt" data-act="rgtoggle" data-k="${k}" aria-expanded="${!shut}" aria-label="${shut?'Show':'Hide'} ${dv==='idle'?'idle':esc(d?d.name:dv)} patients"><span class="car" aria-hidden="true"></span></button>
     ${dv==='idle'?`<span class="stname idlegrp"><span class="badge idleb">IDLE</span><b>Idle patients</b></span>`:`<button class="stname" data-act="view" data-v="${dv}">${d?`<span class="badge" style="--h:${d.hue}">${d.code}</span>`:''}<b>${esc(d?d.name:dv)}</b></button>`}
